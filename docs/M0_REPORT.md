@@ -110,7 +110,7 @@ Correzione alla radice:
 | Parola «Quick Pilot» | **sherpa-onnx keyword spotting** (Apache-2.0) con frase inglese a vocabolario aperto | openWakeWord addestrato su misura; ASR in streaming + confronto frase | Locale, gratuito, nessuna licenza di rete; «Quick Pilot» è foneticamente inglese |
 | ASR comandi | **Da scegliere col benchmark** tra Parakeet TDT 0.6B v3 (sherpa-onnx, CC-BY-4.0) e Whisper (whisper.cpp/Whisper.net, CUDA) | Vosk italiano come riferimento leggero | Requisito di precisione su italiano con nomi inglesi |
 | Intenti | Parser deterministico + corrispondenza approssimata su catalogo app/giochi | — | Percorso critico senza LLM |
-| TTS | **Voce personalizzata JARVIS** (CosyVoice 3 `Fun-CosyVoice3-0.5B`, servizio locale persistente con streaming). Decisione dell'utente del 2026-10-20 | Voci OneCore Cosimo/Elsa solo come riserva | Naturalezza e riconoscibilità; latenza da misurare (T1–T4 in `docs/M0_TTS_PLAN.md`) |
+| TTS | **Voce personalizzata JARVIS** (CosyVoice 3 `Fun-CosyVoice3-0.5B`, servizio locale persistente con streaming). Decisione dell'utente del 2026-10-20 | Nessuna voce robotica: OneCore esclusa per le risposte, usata solo per i campioni ASR; riserva non vocale | Naturalezza e riconoscibilità; latenza da misurare (T1–T4 in `docs/M0_TTS_PLAN.md`) |
 | LLM opzionale | llama.cpp (MIT) con modello scelto per licenza e VRAM | — | Modulo separato, mai nel percorso rapido |
 | App desktop | Shell/Win32, UI Automation (es. FlaUI, MIT, da verificare) | — | |
 | Steam / Discord / Spotify | Protocolli `steam://`, `discord://`; controlli media di Windows (SMTC) | — | Interfacce supportate, nessun hook nei processi |

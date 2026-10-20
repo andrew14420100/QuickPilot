@@ -10,7 +10,7 @@ Stato: **proposta tecnica, nessun codice e nessuna misura ancora eseguita.** Fa 
 - **ASR e TTS sono due cose distinte.** ASR (Parakeet/Whisper, benchmark B4) serve a capire i comandi; TTS (questa voce) serve a pronunciare le risposte. La scelta dell'ASR non cambia la voce.
 - La configurazione funzionante di JARVIS e il file della voce personalizzata **non vanno modificati**. La voce non va ri-clonata né sostituita senza l'approvazione dell'utente.
 
-Questa decisione aggiorna l'ipotesi iniziale del report M0 (voci OneCore come TTS principale). Le voci OneCore Cosimo ed Elsa, verificate in B2, restano utili come **riserva** e per generare i campioni sintetici B4.
+Questa decisione sostituisce l'ipotesi iniziale del report M0, che prevedeva le voci OneCore come TTS principale. Le voci OneCore Cosimo ed Elsa, verificate in B2, servono **solo** a generare i campioni sintetici per il benchmark ASR e non verranno usate per rispondere.
 
 ## Cosa dicono le fonti (da verificare con misure)
 
@@ -32,7 +32,7 @@ Questa decisione aggiorna l'ipotesi iniziale del report M0 (voci OneCore come TT
    - Si possono pre-generare con la voce JARVIS brevi conferme standard, per esempio «Fatto», «Annullato», «Non ho capito, puoi ripetere?».
    - Non vanno in cache testi con importi, destinatari, nomi di file o altri dati personali: i riepiloghi R2 si generano sempre al momento.
    - La cache resta su D:, fuori da Git.
-5. **Riserva.** Se il servizio CosyVoice non è disponibile o supera un timeout, una conferma breve può usare la voce OneCore. La scelta resta da confermare con l'utente, perché cambia la voce percepita.
+5. **Nessuna voce robotica di riserva.** L'utente ha escluso le voci OneCore (Cosimo, Elsa) per le risposte: sono servite solo a generare i campioni sintetici per B4. Se il servizio CosyVoice non è disponibile o supera un timeout, la riserva è **non vocale**: bolla di stato e suono discreto. Per un riepilogo R2, Quick Pilot attende che la voce sia disponibile oppure mostra il riepilogo senza leggerlo. Il comportamento esatto va definito con l'utente.
 6. **Altri motori solo se necessario.** Una voce CosyVoice non si trasferisce a motori diversi: un clone con un altro TTS non sarebbe identico. Si valuta solo se le misure mostrano limiti inaccettabili, e con l'approvazione dell'utente.
 
 ## Misure proposte (benchmark T1–T4, da preparare dopo il confronto ASR)
