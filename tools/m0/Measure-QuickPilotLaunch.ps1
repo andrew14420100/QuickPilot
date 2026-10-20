@@ -48,15 +48,10 @@ if (-not $entry.closable -and $Repetitions -gt 1) {
     $Repetitions = 1
 }
 
-function Get-TargetProcess {
-    @(Get-Process -Name $entry.processes -ErrorAction SilentlyContinue)
-}
-
 $samples = @()
 $skipped = $null
 for ($i = 1; $i -le $Repetitions; $i++) {
-    $before = Get-TargetProcess
-    if ($before.Count -gt 0) {
+    if ((Get-M0ProcessCount -Name $entry.processes) -gt 0) {
         $skipped = "$Target è già in esecuzione: chiuderlo manualmente per misurare un avvio da zero."
         Write-Warning $skipped
         break
@@ -74,10 +69,9 @@ for ($i = 1; $i -le $Repetitions; $i++) {
     $windowPids = @()
     $deadline = [TimeSpan]::FromSeconds($TimeoutSeconds)
     while ($sw.Elapsed -lt $deadline) {
-        $withWindow = @(Get-TargetProcess | Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero })
-        if ($withWindow.Count -gt 0) {
+        $windowPids = @(Get-M0WindowProcessId -Name $entry.processes)
+        if ($windowPids.Count -gt 0) {
             $visibleMs = $sw.Elapsed.TotalMilliseconds
-            $windowPids = @($withWindow | ForEach-Object { $_.Id })
             break
         }
         Start-Sleep -Milliseconds 25
@@ -100,6 +94,13 @@ for ($i = 1; $i -le $Repetitions; $i++) {
             if ($p) { $null = $p.CloseMainWindow(); $null = $p.WaitForExit(5000) }
         }
         Start-Sleep -Milliseconds 500
+        # Se il target resta in esecuzione (es. Notepad che mantiene un processo) le misure
+        # successive non sarebbero da zero: ci si ferma invece di chiuderlo forzatamente.
+        if ((Get-M0ProcessCount -Name $entry.processes) -gt 0 -and $i -lt $Repetitions) {
+            $skipped = "$Target è ancora in esecuzione dopo la chiusura: misure interrotte dopo $i avvii (nessuna chiusura forzata)."
+            Write-Warning $skipped
+            break
+        }
     }
 }
 

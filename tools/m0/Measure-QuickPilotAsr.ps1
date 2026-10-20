@@ -73,31 +73,8 @@ Write-Output ('Modello verificato ({0}).' -f $(if ($SkipHashCheck) { 'solo dimen
 
 $indexPath = Join-Path $SamplesDir 'samples.json'
 if (-not (Test-Path -LiteralPath $indexPath)) { throw "Indice dei campioni mancante: $indexPath (eseguire New-QuickPilotAsrSamples.ps1)." }
-$samples = @(Get-Content -LiteralPath $indexPath -Raw -Encoding UTF8 | ConvertFrom-Json)
+$samples = @(Read-M0JsonArray -Path $indexPath)
 if ($samples.Count -eq 0) { throw 'Nessun campione nell''indice.' }
-
-function Get-NormalizedWordList {
-    param([string]$Text)
-    $clean = $Text.ToLowerInvariant() -replace '[^\p{L}\p{Nd}\s-]', ' ' -replace '-', ' '
-    @($clean -split '\s+' | Where-Object { $_ })
-}
-
-# Word error rate tramite distanza di Levenshtein sulle parole.
-function Get-WordErrorRate {
-    param([string[]]$Reference, [string[]]$Hypothesis)
-    $n = $Reference.Count; $m = $Hypothesis.Count
-    if ($n -eq 0) { return $(if ($m -eq 0) { 0.0 } else { 1.0 }) }
-    $prev = 0..$m
-    for ($i = 1; $i -le $n; $i++) {
-        $cur = @($i) + (@(0) * $m)
-        for ($j = 1; $j -le $m; $j++) {
-            $cost = $(if ($Reference[$i - 1] -eq $Hypothesis[$j - 1]) { 0 } else { 1 })
-            $cur[$j] = [math]::Min([math]::Min($prev[$j] + 1, $cur[$j - 1] + 1), $prev[$j - 1] + $cost)
-        }
-        $prev = $cur
-    }
-    [math]::Round($prev[$m] / $n, 3)
-}
 
 function Invoke-Recognizer {
     param([string]$WavPath, [int]$ThreadCount, [int]$TimeoutSec)
@@ -149,9 +126,9 @@ foreach ($sample in $samples) {
     if ($run.stderr -match 'Elapsed seconds:\s*([\d.]+)') { $decodeSeconds = [double]::Parse($Matches[1], $invariant) }
     if ($run.stderr -match 'RTF\):\s*[\d.]+\s*/\s*([\d.]+)') { $audioSeconds = [double]::Parse($Matches[1], $invariant) }
 
-    $reference = Get-NormalizedWordList $sample.expected
-    $hypothesis = Get-NormalizedWordList $text
-    $wer = Get-WordErrorRate $reference $hypothesis
+    $reference = @(Get-M0NormalizedWordList $sample.expected)
+    $hypothesis = @(Get-M0NormalizedWordList $text)
+    $wer = Get-M0WordErrorRate -Reference $reference -Hypothesis $hypothesis
     $results += [ordered]@{
         file          = $sample.file
         expected      = $sample.expected

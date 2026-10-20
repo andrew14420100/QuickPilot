@@ -43,6 +43,17 @@ Indicazioni rilevanti:
 
 Correzione allo script: le sezioni della toolchain ora riportano `present`, `exitCode` e `output` in modo esplicito, così «strumento assente» e «nessun SDK» restano distinguibili.
 
+### Bug corretto: `.Count` in Windows PowerShell 5.1
+
+In Windows PowerShell 5.1 con StrictMode, una funzione che restituisce un array di un solo elemento lo «srotola» in uno scalare, che non ha `.Count`. Questo bloccava B5 con un solo processo Notepad.
+
+Correzione alla radice:
+- `Get-M0ProcessCount` restituisce sempre un intero; gli altri helper si richiamano solo dentro `@(...)`.
+- `Read-M0JsonArray` gestisce anche il caso in cui PS 5.1 restituisce l'array JSON come oggetto unico.
+- Controllati tutti gli accessi a `.Count` negli script M0.
+- B5 ora si ferma, senza chiusure forzate, se il target resta in esecuzione dopo la chiusura: così un processo Notepad persistente non falsa le misure.
+- Nuovo `Test-M0Common.ps1`: 23 controlli su 0, 1 e molti elementi con processi finti. Passano in PowerShell 7.4 su Linux. **In PowerShell 7 il bug originale non si riproduce**, quindi il self-test va eseguito in Windows PowerShell 5.1 sul PC.
+
 ## 3. Fonti e versioni verificate
 
 | Componente | Stato verificato | Fonte |
@@ -124,9 +135,9 @@ Stato degli strumenti (vedi `tools/m0/README.md`), ordinati per priorità:
 | Ordine | Prova | Strumento | Stato |
 |---|---|---|---|
 | 1 | B1 inventario | `Get-QuickPilotInventory.ps1` | ✅ **Eseguita** dall'utente |
-| 2 | B2 voci TTS | `Test-QuickPilotTts.ps1` | 🟡 Predisposta, da eseguire |
-| 3 | Scelta microfono (prerequisito di B3/B4) | `Test-QuickPilotMicrophone.ps1` | 🟡 Predisposta, da eseguire |
-| 4 | B5 avvio app | `Measure-QuickPilotLaunch.ps1` | 🟡 Predisposta, da eseguire |
+| 2 | B2 voci TTS | `Test-QuickPilotTts.ps1` | ✅ **Eseguita sul PC: PASS.** Microsoft Cosimo ed Elsa (it-IT) confermate all'ascolto, numero letto correttamente |
+| 3 | Scelta microfono (prerequisito di B3/B4) | `Test-QuickPilotMicrophone.ps1` | ✅ **Eseguita sul PC: PASS preliminare.** SB Katana V2X scelto esplicitamente, 16 kHz mono. Silenzio −96,6 dBFS, parlato −33,2 dBFS RMS, picco −13,9 dBFS, saturazione 0%, SNR 63,4 dB. Audio non salvato |
+| 4 | B5 avvio app | `Measure-QuickPilotLaunch.ps1` | 🟡 **Notepad misurato sul PC** (10 avvii, con una correzione temporanea dell'utente): dispatch mediano ≈ 23,8 ms (max 50,9), finestra visibile mediana ≈ 160,2 ms (143,3–282,6). È il riferimento di Notepad, non il tempo end-to-end vocale. Il bug `.Count` in PowerShell 5.1 è corretto alla radice (vedi sotto); Steam, Discord e Spotify sono ancora da misurare |
 | 5 | B9 risorse a riposo/in gioco | `Measure-QuickPilotResources.ps1` | 🟡 Predisposta, da eseguire |
 | 6 | B3 parola di attivazione, B4 ASR | da preparare | ⏸ In attesa del consenso al download (§7.1) |
 | 7 | B6 impatto in gioco, B7 estensione Chrome, B8 packaging | da preparare | ⏸ Dopo B3/B4 |

@@ -10,6 +10,7 @@ Regole comuni:
 
 | Prova | Script | Cosa fa |
 |---|---|---|
+| Self-test | `Test-M0Common.ps1` | Controlla le funzioni comuni con 0, 1 e molti elementi in StrictMode, con processi finti. Da eseguire in Windows PowerShell 5.1 prima dei benchmark |
 | B1 | `Get-QuickPilotInventory.ps1` | Inventario di hardware, toolchain e permessi in sola lettura |
 | B3/B4 prep | `Test-QuickPilotMicrophone.ps1` | Elenca i microfoni, fa scegliere esplicitamente il dispositivo e misura parlato, rumore, SNR e saturazione (l'audio non viene salvato) |
 | B2 | `Test-QuickPilotTts.ps1` | Elenca le voci italiane OneCore, misura la sintesi, riproduce la frase e chiede se la voce è davvero italiana |
@@ -22,6 +23,9 @@ Regole comuni:
 ## Ordine consigliato
 
 ```powershell
+# 0. Self-test in Windows PowerShell 5.1 (nessun processo reale, file temporanei su D:)
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Test-M0Common.ps1
+
 # B2: voci TTS (riproduce audio dalle casse o dalle cuffie predefinite)
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Test-QuickPilotTts.ps1
 

@@ -77,6 +77,59 @@ function Get-M0Summary {
     }
 }
 
+# Nota per Windows PowerShell 5.1 con StrictMode: le funzioni «srotolano» gli array restituiti,
+# quindi 0 elementi diventano $null e 1 elemento diventa uno scalare senza .Count.
+# Le funzioni seguenti restituiscono un intero, oppure vanno sempre richiamate dentro @(...).
+
+# Numero di processi in esecuzione con i nomi indicati (sempre un intero).
+function Get-M0ProcessCount {
+    param([string[]]$Name)
+    @(Get-Process -Name $Name -ErrorAction SilentlyContinue).Count
+}
+
+# Id dei processi con una finestra principale. Chiamare come @(Get-M0WindowProcessId ...).
+function Get-M0WindowProcessId {
+    param([string[]]$Name)
+    @(Get-Process -Name $Name -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero } |
+        ForEach-Object { $_.Id })
+}
+
+# Legge un file JSON che contiene un array. Chiamare come @(Read-M0JsonArray ...): in Windows
+# PowerShell 5.1 ConvertFrom-Json emette l'array come unico oggetto, qui viene riaperto.
+function Read-M0JsonArray {
+    param([Parameter(Mandatory)][string]$Path)
+    $parsed = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+    @($parsed)
+}
+
+# Parole normalizzate (minuscole, senza punteggiatura). Chiamare come @(Get-M0NormalizedWordList ...).
+function Get-M0NormalizedWordList {
+    param([string]$Text)
+    if (-not $Text) { return }
+    $clean = $Text.ToLowerInvariant() -replace '[^\p{L}\p{Nd}\s-]', ' ' -replace '-', ' '
+    @($clean -split '\s+' | Where-Object { $_ })
+}
+
+# Word error rate tramite distanza di Levenshtein sulle parole; accetta anche liste vuote o $null.
+function Get-M0WordErrorRate {
+    param([string[]]$Reference, [string[]]$Hypothesis)
+    $ref = @($Reference | Where-Object { $_ })
+    $hyp = @($Hypothesis | Where-Object { $_ })
+    $n = $ref.Count; $m = $hyp.Count
+    if ($n -eq 0) { return $(if ($m -eq 0) { 0.0 } else { 1.0 }) }
+    $prev = @(0..$m)
+    for ($i = 1; $i -le $n; $i++) {
+        $cur = @($i) + @(@(0) * $m)
+        for ($j = 1; $j -le $m; $j++) {
+            $cost = $(if ($ref[$i - 1] -eq $hyp[$j - 1]) { 0 } else { 1 })
+            $cur[$j] = [math]::Min([math]::Min($prev[$j] + 1, $cur[$j - 1] + 1), $prev[$j - 1] + $cost)
+        }
+        $prev = $cur
+    }
+    [math]::Round($prev[$m] / $n, 3)
+}
+
 # Chiede conferma esplicita (s/n) prima di un'azione visibile, salvo -Force del chiamante.
 function Confirm-M0Action {
     param([string]$Message, [switch]$Force)
