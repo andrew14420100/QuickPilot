@@ -1,14 +1,19 @@
 # D0 — Questionario di raccolta requisiti
 
-## Istruzioni per Claude Code
+## Istruzioni per Claude Code — obbligo di selezione interattiva
 
-Prima di fare analisi tecnica o scrivere codice, poni all'utente le domande sotto. Sono intenzionalmente numerose perché Quick Pilot dovrà essere una piattaforma di automazione generale, non soltanto un launcher.
+**Non presentare il questionario come una lunga lista da compilare a mano. Usa il tool nativo `AskUserQuestion` di Claude Code, così l'utente può selezionare le risposte nell'interfaccia.**
 
-- Mostra le domande raggruppate in sezioni brevi e numerate.
+- Fai 3–4 domande per volta tramite `AskUserQuestion`; continua per piccoli gruppi fino a coprire i requisiti importanti. Non stampare tutte le domande in un unico messaggio.
+- Per ogni domanda prepara 2–4 opzioni chiare e pratiche; aggiungi brevi descrizioni quando aiutano a capire le conseguenze. Indica l'opzione consigliata come **(Consigliata)** solo quando hai una motivazione concreta.
+- Usa la selezione multipla per priorità, applicazioni, funzionalità o permessi che possono coesistere; usa la selezione singola per decisioni alternative incompatibili.
+- Lascia disponibile l'opzione nativa **Altro** o l'inserimento di una risposta personalizzata. Quando opportuno, includi anche opzioni come **Non lo so, consigliami** e **Decidi più avanti**.
+- Adatta le domande successive alle selezioni ricevute; non chiedere di nuovo ciò che è già stato risposto. Se una domanda è libera, trasformala in opzioni rappresentative e permetti di specificare altro.
+- Alla fine di ogni sezione mostra una breve sintesi delle scelte registrate. Permetti di correggerle prima di passare alla sezione successiva o alla specifica finale.
+- Accetta risposte parziali e applica impostazioni predefinite prudenti solo se l'utente lo consente o sceglie di farsi consigliare; segnala cosa resta da decidere.
 - Non chiedere dati hardware o dettagli tecnici che si possono rilevare in modo non invasivo durante M0.
-- Accetta risposte parziali; per le decisioni sconosciute proponi un valore predefinito sicuro.
 - Non ripetere informazioni già note: Windows 11 Pro, uso personale, costo-obiettivo zero euro di servizi obbligatori, RTX 5070 Ti 16 GB, microfono Sound Blaster Katana V2X, preferenza per installer per utente e versione portable, desiderio di automazioni veloci, possibilità di operazioni online con conferma.
-- Se le risposte aprono ulteriori scelte veramente importanti, chiedi un secondo giro conciso.
+- Se le risposte aprono ulteriori scelte davvero importanti, chiedi un secondo giro conciso sempre usando `AskUserQuestion`.
 - Non programmare dopo il questionario finché non hai prodotto una specifica e l'utente non l'ha verificata.
 
 ## A. Obiettivo e ampiezza
