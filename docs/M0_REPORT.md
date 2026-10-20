@@ -157,7 +157,7 @@ Stato degli strumenti (vedi `tools/m0/README.md`), ordinati per priorità:
   - Gestiti con errori espliciti per campione: codice di uscita non zero, output senza tempi, trascrizione vuota, timestamp inattesi, timeout con chiusura del processo, file mancante, modello alterato, DLL VC++ mancanti.
   - Self-test 30/30, PSScriptAnalyzer pulito.
   - **Il binario Windows di whisper.cpp non è mai stato eseguito.** Download e benchmark in attesa del consenso esplicito dell'utente (§7.1) |
-| 6a | B4 confronto Whisper (CPU) | `Get-QuickPilotWhisperModels.ps1`, `Measure-QuickPilotWhisper.ps1`, `Compare-QuickPilotAsr.ps1` | 🟡 **Dry run verificato sul PC** (2 file, 578.009.869 B, nessuna rete né cartella). **Nessun download Whisper**: in attesa del consenso dell'utente e della verifica delle DLL del VC++ Redistributable |
+| 6a | B4 confronto Whisper (CPU) | `Get-QuickPilotWhisperModels.ps1`, `Measure-QuickPilotWhisper.ps1`, `Compare-QuickPilotAsr.ps1` | 🟡 **Download autorizzato ed eseguito sul PC:** 2 file verificati per dimensione e SHA-256, 21 voci estratte in `D:\QuickPilotM0\models\whisper-cpp-v1.8.3\Release`, nessun programma avviato. **Benchmark Whisper non ancora eseguito.** |
 | 6b | B3 parola di attivazione | da preparare | ⏸ Dopo il confronto ASR |
 | 6c | T1–T4 voce di risposta JARVIS | da preparare | ⏸ Dopo il confronto ASR (`docs/M0_TTS_PLAN.md`) |
 | 7 | B6 impatto in gioco, B7 estensione Chrome, B8 packaging | da preparare | ⏸ Dopo B3/B4 |
