@@ -56,6 +56,8 @@ Per voce (confronto eseguito sul PC con `Compare-QuickPilotAsr.ps1`):
 
 **Raccomandazione attuale, condivisa con l'utente (non ancora una scelta definitiva):** Parakeet è il **candidato ASR predefinito** per il percorso interattivo, per il WER più basso e la latenza circa 149 volte inferiore. Whisper large-v3-turbo q5_0 su CPU, nella configurazione provata, non è adatto ai comandi interattivi. La parola di attivazione resta una questione separata (B3): il prefisso testuale su TTS non misura i falsi positivi.
 
+**Limite dei benchmark sintetici:** le misure B4 su TTS (Cosimo ed Elsa) non misurano l'accuratezza sul parlato reale né i falsi positivi durante il gioco. La prova dal vivo (6d) serve a colmare il primo punto; il secondo richiede B3.
+
 Lettura preliminare:
 - **Latenza.** Whisper, così configurato, impiega circa 150 volte più di Parakeet ed è fuori dal budget dei 2 s per i comandi interattivi. La causa attesa è l'encoder di Whisper, che elabora sempre una finestra di 30 s anche per frasi di 2 s: il tempo dell'encoder è nel JSON (`encodeMs`). La misura appare coerente con la configurazione, ma non è ancora ottimizzata.
 - **Accuratezza.** Parakeet ha un WER medio più basso. Whisper riconosce sempre il prefisso «quick pilot», ma sbaglia più parole nel resto della frase. Senza i testi trascritti non si può distinguere quanto pesino numeri, nomi propri o punteggiatura.
@@ -183,7 +185,8 @@ Stato degli strumenti (vedi `tools/m0/README.md`), ordinati per priorità:
   - Self-test 30/30, PSScriptAnalyzer pulito.
   - **Il binario Windows di whisper.cpp non è mai stato eseguito.** Download e benchmark in attesa del consenso esplicito dell'utente (§7.1) |
 | 6a | B4 confronto Whisper (CPU) | `Get-QuickPilotWhisperModels.ps1`, `Measure-QuickPilotWhisper.ps1`, `Compare-QuickPilotAsr.ps1` | ✅ **Eseguito sul PC** (Windows PowerShell 5.1, 4 thread, CPU, `-l it`, contesto audio predefinito; modello verificato). 20/20 campioni validi: WER medio 0,298, 4/20 esatte, «quick pilot» nel testo 20/20, trascrizione p50 14.800,1 ms e p95 15.155,9 ms, caricamento p50 466,8 ms. Confronto consolidato eseguito sul PC con `Compare-QuickPilotAsr.ps1` |
-| 6b | B3 parola di attivazione | da preparare | ⏸ Dopo il confronto ASR |
+| 6d | B4 dal vivo: Parakeet sulla voce reale (opt-in) | `Test-QuickPilotLiveAsr.ps1` | 🟡 **Predisposto, non ancora eseguito sul PC.** Provato nel cloud: self-test 58/58 con microfono e riconoscitore finti (consenso negato, annullamento, frase saltata, microfono mancante, virtuale o ambiguo, modello mancante o hash errato, errore del processo, timeout, output vuoto o malformato, WAV eliminato in ogni caso, pulizia dei residui), più una prova reale con sherpa-onnx v1.13.8 Linux e il modello verificato su un audio ufficiale passato come campioni PCM (WER 0,062, WAV temporaneo eliminato) |
+| 6b | B3 parola di attivazione (falsi positivi) | da preparare | ⏸ Richiede una nuova approvazione separata per la sessione di ascolto |
 | 6c | T1–T4 voce di risposta JARVIS | da preparare | ⏸ Dopo il confronto ASR (`docs/M0_TTS_PLAN.md`) |
 | 7 | B6 impatto in gioco, B7 estensione Chrome, B8 packaging | da preparare | ⏸ Dopo B3/B4 |
 

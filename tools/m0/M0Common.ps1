@@ -282,6 +282,146 @@ function ConvertFrom-M0WhisperOutput {
     $result
 }
 
+# Statistiche di livello in dBFS (0 dBFS = fondo scala a 16 bit).
+function Get-M0LevelStatistic {
+    param([int16[]]$Samples)
+    if ($Samples.Count -eq 0) { return [ordered]@{ samples = 0 } }
+    $sumSquares = 0.0
+    $peak = 0
+    $clipped = 0
+    foreach ($s in $Samples) {
+        $a = [math]::Abs([int]$s)
+        $sumSquares += [double]$a * $a
+        if ($a -gt $peak) { $peak = $a }
+        if ($a -ge 32767) { $clipped++ }
+    }
+    $rms = [math]::Sqrt($sumSquares / $Samples.Count)
+    [ordered]@{
+        samples        = $Samples.Count
+        rmsDbfs        = $(if ($rms -gt 0) { [math]::Round(20 * [math]::Log10($rms / 32768), 1) } else { $null })
+        peakDbfs       = $(if ($peak -gt 0) { [math]::Round(20 * [math]::Log10($peak / 32768), 1) } else { $null })
+        clippedPercent = [math]::Round(100 * $clipped / $Samples.Count, 3)
+    }
+}
+
+# Rifiuta un percorso sull'unità di sistema (di norma C:), dove l'utente non vuole dati M0.
+function Assert-M0NotSystemDrive {
+    param([Parameter(Mandatory)][string]$Path)
+    $root = [IO.Path]::GetPathRoot([IO.Path]::GetFullPath($Path))
+    if ($env:SystemDrive -and $root.TrimEnd('\').ToUpperInvariant() -eq $env:SystemDrive.TrimEnd('\').ToUpperInvariant()) {
+        throw "Il percorso $Path è sull'unità di sistema ($env:SystemDrive): scelta rifiutata."
+    }
+}
+
+# Comandi di prova fissi (dai casi d'uso di docs/REQUIREMENTS.md), condivisi da campioni sintetici e prova dal vivo.
+function Get-M0CommandList {
+    @(
+        'Quick Pilot, apri Steam e Discord.',
+        'Quick Pilot, avvia Counter-Strike 2.',
+        'Quick Pilot, metti in pausa Spotify.',
+        'Quick Pilot, sistema i download di oggi.',
+        'Quick Pilot, riapri le pagine di ieri.',
+        'Quick Pilot, apri la cartella Documenti.',
+        'Quick Pilot, crea la routine serata.',
+        'Quick Pilot, cerca un SSD da due terabyte.',
+        'Quick Pilot, confermo ordine da ottantanove euro.',
+        'Quick Pilot, annulla.'
+    )
+}
+
+# File del modello Parakeet int8 (stessi valori del manifest -Step 1 di Get-QuickPilotM0Models.ps1).
+function Get-M0ParakeetModelSpec {
+    [ordered]@{
+        encoder = @{ file = 'encoder.int8.onnx'; size = [int64]652184281; sha256 = 'acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247' }
+        decoder = @{ file = 'decoder.int8.onnx'; size = [int64]11845275; sha256 = '179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e' }
+        joiner  = @{ file = 'joiner.int8.onnx'; size = [int64]6355277; sha256 = '3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3' }
+        tokens  = @{ file = 'tokens.txt'; size = [int64]93939; sha256 = 'd58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d' }
+    }
+}
+
+# Verifica i file Parakeet in <ModelsRoot>\parakeet-tdt-0.6b-v3-int8 e restituisce i loro percorsi completi.
+function Get-M0VerifiedParakeetPath {
+    param([Parameter(Mandatory)][string]$ModelsRoot, [switch]$SkipHash)
+    $modelDir = Join-Path $ModelsRoot 'parakeet-tdt-0.6b-v3-int8'
+    $spec = Get-M0ParakeetModelSpec
+    $paths = @{}
+    foreach ($key in $spec.Keys) {
+        $path = Assert-M0SafePath (Join-Path $modelDir $spec[$key].file)
+        Assert-M0FileIntegrity -Path $path -Size $spec[$key].size -Sha256 $spec[$key].sha256 -SkipHash:$SkipHash
+        $paths[$key] = $path
+    }
+    $paths
+}
+
+# Argomenti fissi per sherpa-onnx-offline: modello verificato, solo CPU, un file audio.
+function Get-M0SherpaArgument {
+    param([Parameter(Mandatory)][hashtable]$ModelPath, [Parameter(Mandatory)][string]$WavPath, [int]$Threads = 4)
+    @(
+        "--tokens=`"$($ModelPath.tokens)`"", "--encoder=`"$($ModelPath.encoder)`"",
+        "--decoder=`"$($ModelPath.decoder)`"", "--joiner=`"$($ModelPath.joiner)`"",
+        '--model-type=nemo_transducer', "--num-threads=$Threads", '--provider=cpu',
+        "`"$WavPath`""
+    ) -join ' '
+}
+
+# Interpreta l'output di sherpa-onnx-offline v1.13.8 (una riga JSON per file su stdout; tempi su stderr).
+# Non lancia eccezioni: se l'output non è quello atteso restituisce ok = $false con il motivo.
+function ConvertFrom-M0SherpaOutput {
+    param([string]$Stdout, [string]$Stderr)
+    $result = [ordered]@{ ok = $false; text = $null; loadSeconds = $null; decodeSeconds = $null; audioSeconds = $null; error = $null }
+    $invariant = [Globalization.CultureInfo]::InvariantCulture
+    if ("$Stderr" -match 'recognizer created in ([\d.]+) s') { $result.loadSeconds = [double]::Parse($Matches[1], $invariant) }
+    if ("$Stderr" -match 'Elapsed seconds:\s*([\d.]+)') { $result.decodeSeconds = [double]::Parse($Matches[1], $invariant) }
+    if ("$Stderr" -match 'RTF\):\s*[\d.]+\s*/\s*([\d.]+)') { $result.audioSeconds = [double]::Parse($Matches[1], $invariant) }
+    $jsonLine = @("$Stdout" -split "`r?`n" | Where-Object { $_.TrimStart().StartsWith('{') }) | Select-Object -First 1
+    if (-not $jsonLine) {
+        $result.error = 'nessuna riga JSON su stdout'
+        return $result
+    }
+    try { $parsed = $jsonLine | ConvertFrom-Json }
+    catch {
+        $result.error = 'riga JSON non valida'
+        return $result
+    }
+    if (-not ($parsed.PSObject.Properties.Name -contains 'text')) {
+        $result.error = 'campo text assente nel JSON'
+        return $result
+    }
+    if ($null -eq $result.decodeSeconds) {
+        $result.error = 'tempo di decodifica (Elapsed seconds) non trovato'
+        return $result
+    }
+    $result.text = "$($parsed.text)".Trim()
+    $result.ok = $true
+    $result
+}
+
+# Scrive campioni PCM 16 bit mono come file WAV (intestazione RIFF standard di 44 byte).
+function Write-M0WaveFile {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][int16[]]$Samples, [int]$SampleRate = 16000)
+    $dataBytes = $Samples.Count * 2
+    $stream = New-Object IO.FileStream($Path, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    $writer = New-Object IO.BinaryWriter($stream)
+    try {
+        $writer.Write([Text.Encoding]::ASCII.GetBytes('RIFF'))
+        $writer.Write([int32](36 + $dataBytes))
+        $writer.Write([Text.Encoding]::ASCII.GetBytes('WAVEfmt '))
+        $writer.Write([int32]16)             # dimensione del blocco fmt
+        $writer.Write([int16]1)              # PCM
+        $writer.Write([int16]1)              # mono
+        $writer.Write([int32]$SampleRate)
+        $writer.Write([int32]($SampleRate * 2))
+        $writer.Write([int16]2)              # block align
+        $writer.Write([int16]16)             # bit per campione
+        $writer.Write([Text.Encoding]::ASCII.GetBytes('data'))
+        $writer.Write([int32]$dataBytes)
+        foreach ($sample in $Samples) { $writer.Write($sample) }
+    }
+    finally {
+        $writer.Dispose()
+    }
+}
+
 # Chiede conferma esplicita (s/n) prima di un'azione visibile, salvo -Force del chiamante.
 function Confirm-M0Action {
     param([string]$Message, [switch]$Force)

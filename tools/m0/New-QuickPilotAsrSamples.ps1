@@ -26,19 +26,8 @@ $ErrorActionPreference = 'Stop'
 Assert-M0WindowsPowerShell
 $SamplesDir = Resolve-M0OutputDir -Path $SamplesDir -RequiredMB 20
 
-# Comandi di prova fissi (dai casi d'uso di docs/REQUIREMENTS.md). Nessun dato personale.
-$commands = @(
-    'Quick Pilot, apri Steam e Discord.',
-    'Quick Pilot, avvia Counter-Strike 2.',
-    'Quick Pilot, metti in pausa Spotify.',
-    'Quick Pilot, sistema i download di oggi.',
-    'Quick Pilot, riapri le pagine di ieri.',
-    'Quick Pilot, apri la cartella Documenti.',
-    'Quick Pilot, crea la routine serata.',
-    'Quick Pilot, cerca un SSD da due terabyte.',
-    'Quick Pilot, confermo ordine da ottantanove euro.',
-    'Quick Pilot, annulla.'
-)
+# Comandi di prova fissi (condivisi con la prova dal vivo). Nessun dato personale.
+$commands = @(Get-M0CommandList)
 
 $manifestPath = Join-Path $SamplesDir 'samples.json'
 if ((Test-Path -LiteralPath $manifestPath) -and

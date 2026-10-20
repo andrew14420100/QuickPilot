@@ -36,26 +36,12 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'M0Common.ps1')
 $OutputDir = Resolve-M0OutputDir -Path $OutputDir -RequiredMB 5
 
-# File del modello attesi (stessi valori del manifest di Get-QuickPilotM0Models.ps1).
-$modelDir = Join-Path $ModelsRoot 'parakeet-tdt-0.6b-v3-int8'
-$modelFiles = [ordered]@{
-    encoder = @{ file = 'encoder.int8.onnx'; size = [int64]652184281; sha256 = 'acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247' }
-    decoder = @{ file = 'decoder.int8.onnx'; size = [int64]11845275; sha256 = '179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e' }
-    joiner  = @{ file = 'joiner.int8.onnx'; size = [int64]6355277; sha256 = '3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3' }
-    tokens  = @{ file = 'tokens.txt'; size = [int64]93939; sha256 = 'd58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d' }
-}
 if (-not $ExecutablePath) {
     $ExecutablePath = Join-Path $ModelsRoot 'sherpa-onnx\sherpa-onnx-v1.13.8-win-x64-shared-MT-Release-no-tts\bin\sherpa-onnx-offline.exe'
 }
 
 $exe = Assert-M0SafePath $ExecutablePath
-$paths = @{}
-foreach ($key in $modelFiles.Keys) {
-    $spec = $modelFiles[$key]
-    $path = Assert-M0SafePath (Join-Path $modelDir $spec.file)
-    Assert-M0FileIntegrity -Path $path -Size $spec.size -Sha256 $spec.sha256 -SkipHash:$SkipHashCheck
-    $paths[$key] = $path
-}
+$paths = Get-M0VerifiedParakeetPath -ModelsRoot $ModelsRoot -SkipHash:$SkipHashCheck
 Write-Output ('Modello verificato ({0}).' -f $(if ($SkipHashCheck) { 'solo dimensioni' } else { 'dimensioni e SHA-256' }))
 
 $indexPath = Join-Path $SamplesDir 'samples.json'
@@ -63,32 +49,15 @@ if (-not (Test-Path -LiteralPath $indexPath)) { throw "Indice dei campioni manca
 $samples = @(Read-M0JsonArray -Path $indexPath)
 if ($samples.Count -eq 0) { throw 'Nessun campione nell''indice.' }
 
-# Argomenti fissi: modello verificato, solo CPU, un file audio per esecuzione.
-function Get-RecognizerArgument {
-    param([string]$WavPath, [int]$ThreadCount)
-    @(
-        "--tokens=`"$($paths.tokens)`"", "--encoder=`"$($paths.encoder)`"",
-        "--decoder=`"$($paths.decoder)`"", "--joiner=`"$($paths.joiner)`"",
-        '--model-type=nemo_transducer', "--num-threads=$ThreadCount", '--provider=cpu',
-        "`"$WavPath`""
-    ) -join ' '
-}
-
-$invariant = [Globalization.CultureInfo]::InvariantCulture
 $results = @()
 foreach ($sample in $samples) {
     $wav = Assert-M0SafePath (Join-Path $SamplesDir $sample.file)
-    $run = Invoke-M0Process -FilePath $exe -Arguments (Get-RecognizerArgument -WavPath $wav -ThreadCount $Threads) -TimeoutSeconds $TimeoutSeconds
+    $run = Invoke-M0Process -FilePath $exe -Arguments (Get-M0SherpaArgument -ModelPath $paths -WavPath $wav -Threads $Threads) -TimeoutSeconds $TimeoutSeconds
     if ($run.exitCode -ne 0) { throw ("sherpa-onnx è terminato con codice {0} su {1}:`n{2}" -f $run.exitCode, $sample.file, $run.stderr) }
-
-    $jsonLine = @($run.stdout -split "`r?`n" | Where-Object { $_.TrimStart().StartsWith('{') }) | Select-Object -First 1
-    if (-not $jsonLine) { throw "Nessun risultato JSON per $($sample.file)." }
-    $text = ($jsonLine | ConvertFrom-Json).text.Trim()
-
-    $loadSeconds = $null; $decodeSeconds = $null; $audioSeconds = $null
-    if ($run.stderr -match 'recognizer created in ([\d.]+) s') { $loadSeconds = [double]::Parse($Matches[1], $invariant) }
-    if ($run.stderr -match 'Elapsed seconds:\s*([\d.]+)') { $decodeSeconds = [double]::Parse($Matches[1], $invariant) }
-    if ($run.stderr -match 'RTF\):\s*[\d.]+\s*/\s*([\d.]+)') { $audioSeconds = [double]::Parse($Matches[1], $invariant) }
+    $parsed = ConvertFrom-M0SherpaOutput -Stdout $run.stdout -Stderr $run.stderr
+    if (-not $parsed.ok) { throw ("Output di sherpa-onnx non interpretabile per {0}: {1}" -f $sample.file, $parsed.error) }
+    $text = $parsed.text
+    $loadSeconds = $parsed.loadSeconds; $decodeSeconds = $parsed.decodeSeconds; $audioSeconds = $parsed.audioSeconds
 
     $reference = @(Get-M0NormalizedWordList $sample.expected)
     $hypothesis = @(Get-M0NormalizedWordList $text)

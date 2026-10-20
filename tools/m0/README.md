@@ -22,6 +22,7 @@ Regole comuni:
 | B4 passo 2 | `Get-QuickPilotWhisperModels.ps1` | Scarica **solo** whisper.cpp v1.8.3 (CPU, Windows x64) e `ggml-large-v3-turbo-q5_0.bin`. Stesso motore e stesse garanzie del passo 1 (`Get-QuickPilotM0Models.ps1 -Step 2`) |
 | B4 Whisper | `Measure-QuickPilotWhisper.ps1` | Verifica VC++ Redistributable e modello, poi esegue whisper-cli (solo CPU, `-ng`, argomenti fissi) sugli stessi campioni. Gli errori vengono registrati per singolo campione e non sono mai contati come validi |
 | B4 confronto | `Compare-QuickPilotAsr.ps1` | Confronta gli ultimi risultati Parakeet e Whisper per motore e per voce: WER, corrispondenze esatte, «quick pilot», latenza senza caricamento, caricamento |
+| B4 dal vivo (opt-in) | `Test-QuickPilotLiveAsr.ps1` | Parakeet su CPU con la **voce reale** dell'utente: 10 frasi fisse, una alla volta, dal microfono SB Katana V2X. Chiede il consenso prima di registrare e non conserva l'audio (vedi sotto) |
 
 ## Ordine consigliato
 
@@ -81,11 +82,45 @@ Regole di confronto, identiche per i due motori:
 - La latenza esclude il caricamento del modello: per Parakeet è la decodifica riportata da sherpa-onnx, per Whisper è `total` meno `load` di whisper.cpp.
 - «quick pilot» viene cercato solo all'inizio del testo trascritto. **Non è un benchmark della parola di attivazione** e non misura i falsi positivi.
 
+## B4 dal vivo: Parakeet sulla voce reale (opt-in)
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Test-QuickPilotLiveAsr.ps1
+```
+
+Prerequisiti: modello Parakeet e runtime sherpa-onnx del passo 1 già presenti e verificati in `D:\QuickPilotM0\models`; disco D: collegato.
+
+Prima di registrare, lo script:
+1. elimina eventuali WAV temporanei rimasti da una sessione chiusa bruscamente, solo i propri `qp-live-*.wav` in `D:\QuickPilotM0\tmp-live`;
+2. verifica l'eseguibile sherpa-onnx e i file del modello (dimensioni e SHA-256);
+3. seleziona il microfono il cui nome contiene «Katana», escludendo i dispositivi virtuali (Steam Streaming Microphone, VB-Audio e simili), e lo mostra. Se non lo trova, o ne trova più di uno, si ferma: in quel caso si usa `-DeviceId`;
+4. mostra cosa verrà registrato, dove, per quanto tempo e come viene eliminato, e chiede il consenso (s/n). **Con «n» termina senza registrare nulla.**
+
+Poi, per ognuna delle 10 frasi: la mostra e aspetta. Con Invio registra per 5 s (`-RecordSeconds`), con `p` la salta, con `q` termina. Non c'è ascolto in background né tra una frase e l'altra.
+
+Privacy dell'audio:
+- l'audio viene acquisito in memoria;
+- `sherpa-onnx-offline` legge solo file, quindi ogni frase viene scritta come WAV temporaneo in `D:\QuickPilotM0\tmp-live` (mai su C:, mai nel repository), trascritta e **cancellata nel blocco `finally`**, anche in caso di errore, timeout o Ctrl+C;
+- la cancellazione **non** impedisce un eventuale recupero forense del file dal disco;
+- i risultati in `D:\QuickPilotM0\results\b4-live-asr-parakeet-*.json` contengono solo testo atteso e riconosciuto, metriche e il campo `tempWavDeleted` per ogni prova: nessun audio;
+- il testo riconosciuto non viene mai eseguito: è solo confrontato con la frase attesa.
+
+Metriche per frase:
+- durata dell'acquisizione;
+- decodifica ASR (`decodeMs`, senza caricamento del modello);
+- tempo complessivo del processo ASR (`asrWallMs`) e caricamento del modello (`modelLoadMs`);
+- testo riconosciuto, WER, corrispondenza esatta, prefisso «quick pilot»;
+- livello del parlato.
+
+**Il CLI viene riavviato per ogni frase**, quindi il modello (circa 1 s sul PC) viene ricaricato ogni volta. Il caricamento è misurato a parte e non pesa sulla latenza di decodifica. Un servizio con modello sempre caricato è una scelta da valutare in M1.
+
+Non è un test della parola di attivazione: i falsi positivi (sessione di ascolto lunga) richiedono una nuova approvazione separata.
+
 ## Limiti noti
 
 - **B5:** misura solo la parte di sistema (dispatch e finestra), non il riconoscimento vocale, che fa parte di B3/B4. Se l'app è già aperta la misura viene saltata. Per Steam, Discord e Spotify lo strumento non chiude mai l'app.
 - **B9:** finché non esistono prototipi di Quick Pilot misura il budget disponibile, non il consumo di Quick Pilot.
-- **Verifiche:** sul PC (Windows PowerShell 5.1) sono stati eseguiti B1, B2, microfono, B5 (Notepad), B9 (riposo), il self-test, il download del passo 1, i campioni B4 e il benchmark Parakeet. Gli strumenti Whisper e il confronto sono stati provati **solo nel cloud Linux** (whisper.cpp v1.8.3 compilato dai sorgenti): il binario Windows di whisper.cpp non è ancora stato eseguito.
+- **Verifiche:** sul PC (Windows PowerShell 5.1) sono stati eseguiti B1, B2, microfono, B5 (Notepad), B9 (riposo), il self-test, il download del passo 1, i campioni B4 e il benchmark Parakeet. Sul PC sono stati eseguiti anche download, benchmark e confronto di Whisper. La prova dal vivo (`Test-QuickPilotLiveAsr.ps1`) è stata provata **solo nel cloud Linux**, con microfono e riconoscitore finti nel self-test e con sherpa-onnx reale (Linux) su un audio ufficiale. Il microfono reale e il binario Windows non sono stati usati da questo strumento.
 
 ## Prossimi strumenti
 

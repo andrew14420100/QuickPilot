@@ -21,6 +21,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'M0Common.ps1')
+. (Join-Path $PSScriptRoot 'M0LiveAsr.ps1')
 Set-StrictMode -Version 2.0
 
 $script:failures = 0
@@ -161,6 +162,140 @@ if ($realSmi) {
 else {
     Write-Output 'SKIP  GPU: nvidia-smi non trovato su questo sistema'
 }
+
+# --- Output di sherpa-onnx: ben formato, senza JSON, JSON non valido, senza tempi ---------------
+$sherpaErr = "recognizer created in 1.074 s`nElapsed seconds: 0.099 s`nReal time factor (RTF): 0.099 / 2.500 = 0.040"
+Assert-M0Test 'sherpa: output ben formato' {
+    $r = ConvertFrom-M0SherpaOutput -Stdout '{"lang": "", "text": " Quick Pilot, annulla.", "words": []}' -Stderr $sherpaErr
+    $r.ok -and $r.text -eq 'Quick Pilot, annulla.' -and $r.loadSeconds -eq 1.074 -and $r.decodeSeconds -eq 0.099 -and $r.audioSeconds -eq 2.5
+}
+Assert-M0Test 'sherpa: nessuna riga JSON -> errore' { $r = ConvertFrom-M0SherpaOutput -Stdout '' -Stderr $sherpaErr; (-not $r.ok) -and $r.error -match 'JSON' }
+Assert-M0Test 'sherpa: JSON non valido -> errore' { $r = ConvertFrom-M0SherpaOutput -Stdout '{"text": ' -Stderr $sherpaErr; (-not $r.ok) -and $r.error }
+Assert-M0Test 'sherpa: campo text assente -> errore' { $r = ConvertFrom-M0SherpaOutput -Stdout '{"lang": ""}' -Stderr $sherpaErr; (-not $r.ok) -and $r.error -match 'text' }
+Assert-M0Test 'sherpa: tempi assenti -> errore' { $r = ConvertFrom-M0SherpaOutput -Stdout '{"text": "ciao"}' -Stderr ''; (-not $r.ok) -and $r.error -match 'Elapsed' }
+
+# --- Livelli audio: 0, 1, molti campioni -----------------------------------------------------
+Assert-M0Test 'livelli: 0 campioni' { (Get-M0LevelStatistic ([int16[]]@())).samples -eq 0 }
+Assert-M0Test 'livelli: 1 campione a fondo scala' { $l = Get-M0LevelStatistic ([int16[]]@(32767)); $l.samples -eq 1 -and $l.clippedPercent -eq 100 }
+Assert-M0Test 'livelli: silenzio -> rms null' { $l = Get-M0LevelStatistic ([int16[]](@(0) * 1600)); $l.samples -eq 1600 -and $null -eq $l.rmsDbfs }
+
+# --- Selezione del microfono: mancante, virtuale, ambiguo, unico ------------------------------
+Assert-M0Test 'microfono: nessun dispositivo -> errore' { try { Select-M0CaptureDevice -Names @() -Pattern 'Katana'; $false } catch { $_.Exception.Message -match 'Nessun microfono' } }
+Assert-M0Test 'microfono: solo Steam Streaming -> errore' {
+    try { Select-M0CaptureDevice -Names @('Microfono (Steam Streaming Microphone)') -Pattern 'Microphone'; $false } catch { $_.Exception.Message -match 'Nessun microfono' }
+}
+Assert-M0Test 'microfono: Katana tra più dispositivi -> indice corretto' {
+    (Select-M0CaptureDevice -Names @('Microfono (Steam Streaming Micro', 'Microfono (SB Katana V2X)') -Pattern 'Katana') -eq 1
+}
+Assert-M0Test 'microfono: due corrispondenze -> errore ambiguo' {
+    try { Select-M0CaptureDevice -Names @('Katana A', 'Katana B') -Pattern 'Katana'; $false } catch { $_.Exception.Message -match 'Più microfoni' }
+}
+
+# --- Comandi, WAV, unità di sistema, file del modello ----------------------------------------
+Assert-M0Test 'comandi di prova: 10 frasi con prefisso' {
+    $c = @(Get-M0CommandList); $c.Count -eq 10 -and @($c | Where-Object { $_ -notlike 'Quick Pilot,*' }).Count -eq 0
+}
+$liveDir = Join-Path $TempDir 'live'
+if (-not (Test-Path -LiteralPath $liveDir)) { New-Item -ItemType Directory -Path $liveDir | Out-Null }
+Assert-M0Test 'WAV: intestazione PCM 16 kHz mono e dimensione' {
+    $w = Join-Path $liveDir 'header-test.wav'
+    try {
+        Write-M0WaveFile -Path $w -Samples ([int16[]](1..100)) -SampleRate 16000
+        $b = [IO.File]::ReadAllBytes($w)
+        $b.Length -eq 244 -and [Text.Encoding]::ASCII.GetString($b, 0, 4) -eq 'RIFF' -and [BitConverter]::ToInt32($b, 24) -eq 16000 -and [BitConverter]::ToInt16($b, 22) -eq 1 -and [BitConverter]::ToInt32($b, 40) -eq 200
+    }
+    finally { if (Test-Path -LiteralPath $w) { Remove-Item -LiteralPath $w } }
+}
+Assert-M0Test 'unità di sistema rifiutata' {
+    if (-not $env:SystemDrive) { return $true }
+    try { Assert-M0NotSystemDrive -Path (Join-Path $env:SystemDrive 'QuickPilotM0'); $false } catch { $_.Exception.Message -match 'unità di sistema' }
+}
+Assert-M0Test 'modello: cartella mancante -> errore' {
+    try { Get-M0VerifiedParakeetPath -ModelsRoot (Join-Path $liveDir 'non-esiste'); $false } catch { $_.Exception.Message -match 'File mancante' }
+}
+Assert-M0Test 'file: hash errato -> errore' {
+    $f = Join-Path $liveDir 'hash-test.bin'
+    try {
+        [IO.File]::WriteAllText($f, 'quick pilot')
+        try { Assert-M0FileIntegrity -Path $f -Size 11 -Sha256 ('0' * 64); $false } catch { $_.Exception.Message -match 'SHA-256' }
+    }
+    finally { Remove-Item -LiteralPath $f }
+}
+
+# --- Prova dal vivo con microfono e riconoscitore finti ----------------------------------------
+$script:captureCalls = 0
+$script:wavSeenByRecognizer = $null
+$fakeCapture = { $script:captureCalls++; , [int16[]](@(1000, -1000) * 8000) }
+$okRecognizer = {
+    param($wav)
+    $script:wavSeenByRecognizer = Test-Path -LiteralPath $wav
+    @{ exitCode = 0; wallSeconds = 1.2; stdout = '{"text": " Quick Pilot, annulla."}'; stderr = $sherpaErr }
+}
+function Get-LiveWavCount { @(Get-ChildItem -LiteralPath $liveDir -Filter 'qp-live-*.wav' -File).Count }
+
+Assert-M0Test 'prova: successo, metriche e WAV eliminato' {
+    $t = Invoke-M0LiveTrial -Phrase 'Quick Pilot, annulla.' -TempDir $liveDir -Capture $fakeCapture -Recognize $okRecognizer
+    $t.status -eq 'ok' -and $t.wer -eq 0 -and $t.wakePhrase -and $t.decodeMs -eq 99 -and $t.modelLoadMs -eq 1074 -and
+        $script:wavSeenByRecognizer -and $t.tempWavDeleted -and (Get-LiveWavCount) -eq 0
+}
+Assert-M0Test 'prova: errore del processo -> WAV eliminato' {
+    $t = Invoke-M0LiveTrial -Phrase 'Quick Pilot, annulla.' -TempDir $liveDir -Capture $fakeCapture -Recognize { param($wav) $null = $wav; @{ exitCode = 3; wallSeconds = 0.1; stdout = ''; stderr = 'boom' } }
+    $t.status -eq 'error' -and $t.error -match 'codice 3' -and $t.tempWavDeleted -and (Get-LiveWavCount) -eq 0
+}
+Assert-M0Test 'prova: timeout del riconoscitore -> WAV eliminato' {
+    $t = Invoke-M0LiveTrial -Phrase 'Quick Pilot, annulla.' -TempDir $liveDir -Capture $fakeCapture -Recognize { param($wav) $null = $wav; throw 'sherpa-onnx-offline.exe non ha terminato entro 60 s.' }
+    $t.status -eq 'error' -and $t.error -match 'non ha terminato' -and $t.tempWavDeleted -and (Get-LiveWavCount) -eq 0
+}
+Assert-M0Test 'prova: output vuoto -> errore, WAV eliminato' {
+    $t = Invoke-M0LiveTrial -Phrase 'Quick Pilot, annulla.' -TempDir $liveDir -Capture $fakeCapture -Recognize { param($wav) $null = $wav; @{ exitCode = 0; wallSeconds = 0.1; stdout = ''; stderr = '' } }
+    $t.status -eq 'error' -and $t.error -match 'non interpretabile' -and $t.tempWavDeleted -and (Get-LiveWavCount) -eq 0
+}
+Assert-M0Test 'prova: acquisizione vuota -> errore, nessun WAV' {
+    $t = Invoke-M0LiveTrial -Phrase 'Quick Pilot, annulla.' -TempDir $liveDir -Capture { , [int16[]]@() } -Recognize $okRecognizer
+    $t.status -eq 'error' -and $t.error -match 'nessun campione' -and (Get-LiveWavCount) -eq 0
+}
+Assert-M0Test 'prova: errore del microfono -> errore, nessun WAV' {
+    $t = Invoke-M0LiveTrial -Phrase 'Quick Pilot, annulla.' -TempDir $liveDir -Capture { throw 'waveInOpen fallita, codice 2' } -Recognize $okRecognizer
+    $t.status -eq 'error' -and $t.error -match 'waveInOpen' -and (Get-LiveWavCount) -eq 0
+}
+
+# Risposte simulate per la sessione: una coda consumata in ordine.
+function New-AnswerQueue {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Prepara solo una coda in memoria.')]
+    param([string[]]$Answers) $script:answers = New-Object System.Collections.Queue; foreach ($a in $Answers) { $script:answers.Enqueue($a) } }
+$queuedAnswer = { param($prompt) $null = $prompt; if ($script:answers.Count -gt 0) { $script:answers.Dequeue() } else { 'q' } }
+$phrasesTwo = @('Quick Pilot, annulla.', 'Quick Pilot, apri Steam e Discord.')
+
+Assert-M0Test 'sessione: consenso negato -> nessuna acquisizione e nessun WAV' {
+    $script:captureCalls = 0; New-AnswerQueue @('n')
+    $r = Invoke-M0LiveSession -Phrases $phrasesTwo -TempDir $liveDir -ConsentText 'test' -ReadAnswer $queuedAnswer -Capture $fakeCapture -Recognize $okRecognizer
+    (-not $r.consented) -and @($r.trials).Count -eq 0 -and $script:captureCalls -eq 0 -and (Get-LiveWavCount) -eq 0
+}
+Assert-M0Test 'sessione: annullamento subito dopo il consenso -> nessuna acquisizione' {
+    $script:captureCalls = 0; New-AnswerQueue @('s', 'q')
+    $r = Invoke-M0LiveSession -Phrases $phrasesTwo -TempDir $liveDir -ConsentText 'test' -ReadAnswer $queuedAnswer -Capture $fakeCapture -Recognize $okRecognizer
+    $r.consented -and $r.cancelled -and @($r.trials).Count -eq 0 -and $script:captureCalls -eq 0
+}
+Assert-M0Test 'sessione: una frase registrata, una saltata' {
+    $script:captureCalls = 0; New-AnswerQueue @('s', '', 'p')
+    $r = Invoke-M0LiveSession -Phrases $phrasesTwo -TempDir $liveDir -ConsentText 'test' -ReadAnswer $queuedAnswer -Capture $fakeCapture -Recognize $okRecognizer
+    $trials = @($r.trials)
+    $trials.Count -eq 2 -and $trials[0].status -eq 'ok' -and $trials[1].status -eq 'skipped' -and $script:captureCalls -eq 1 -and (Get-LiveWavCount) -eq 0
+}
+Assert-M0Test 'sessione: una sola frase (array di un elemento)' {
+    $script:captureCalls = 0; New-AnswerQueue @('s', '')
+    $r = Invoke-M0LiveSession -Phrases @('Quick Pilot, annulla.') -TempDir $liveDir -ConsentText 'test' -ReadAnswer $queuedAnswer -Capture $fakeCapture -Recognize $okRecognizer
+    @($r.trials).Count -eq 1 -and $script:captureCalls -eq 1
+}
+Assert-M0Test 'pulizia: WAV rimasti da una sessione interrotta' {
+    [IO.File]::WriteAllText((Join-Path $liveDir 'qp-live-orfano.wav'), 'x')
+    [IO.File]::WriteAllText((Join-Path $liveDir 'altro-file.wav'), 'x')
+    $n = Remove-M0LiveLeftover -TempDir $liveDir
+    $ok = $n -eq 1 -and (Get-LiveWavCount) -eq 0 -and (Test-Path -LiteralPath (Join-Path $liveDir 'altro-file.wav'))
+    Remove-Item -LiteralPath (Join-Path $liveDir 'altro-file.wav')
+    $ok
+}
+Remove-Item -LiteralPath $liveDir -Recurse -Force
 
 # --- Statistiche: 0, 1, molti valori --------------------------------------------------------
 Assert-M0Test 'riepilogo: 0 valori' { (Get-M0Summary ([double[]]@())).n -eq 0 }
