@@ -41,6 +41,22 @@ function Invoke-ToolIfPresent {
     @($output | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
 }
 
+# Esegue uno strumento della toolchain e ne riporta esplicitamente presenza, codice di uscita e output,
+# così che «assente», «nessun risultato» ed «errore» restino distinguibili nel JSON.
+function Get-ToolReport {
+    param([string]$Name, [string[]]$Arguments)
+    $cmd = Get-Command $Name -ErrorAction SilentlyContinue
+    if (-not $cmd) {
+        return [ordered]@{ present = $false; exitCode = $null; output = @() }
+    }
+    $output = & $cmd.Source @Arguments 2>$null
+    [ordered]@{
+        present  = $true
+        exitCode = $LASTEXITCODE
+        output   = [string[]]@($output | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+    }
+}
+
 function Get-FileVersionIfPresent {
     param([string[]]$Paths)
     foreach ($p in $Paths) {
@@ -181,12 +197,12 @@ $inventory.speech = Invoke-Safely 'Voci TTS' {
 
 $inventory.toolchain = Invoke-Safely 'Toolchain' {
     [ordered]@{
-        dotnetSdks     = Invoke-ToolIfPresent 'dotnet' @('--list-sdks')
-        dotnetRuntimes = Invoke-ToolIfPresent 'dotnet' @('--list-runtimes')
-        git            = Invoke-ToolIfPresent 'git' @('--version')
-        winget         = Invoke-ToolIfPresent 'winget' @('--version')
-        node           = Invoke-ToolIfPresent 'node' @('--version')
-        python         = Invoke-ToolIfPresent 'python' @('--version')
+        dotnetSdks     = Get-ToolReport 'dotnet' @('--list-sdks')
+        dotnetRuntimes = Get-ToolReport 'dotnet' @('--list-runtimes')
+        git            = Get-ToolReport 'git' @('--version')
+        winget         = Get-ToolReport 'winget' @('--version')
+        node           = Get-ToolReport 'node' @('--version')
+        python         = Get-ToolReport 'python' @('--version')
         powershell     = $PSVersionTable.PSVersion.ToString()
     }
 }

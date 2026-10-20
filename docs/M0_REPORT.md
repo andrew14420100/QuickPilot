@@ -25,6 +25,20 @@ Data: 2026-10-20. Riferimento: `docs/REQUIREMENTS.md` (approvata), `docs/M0_VALI
 
 Nessun'altra prova è stata eseguita.
 
+## 2b. Esito dell'inventario B1 (eseguito dall'utente su Windows)
+
+Il JSON grezzo resta sul PC e non viene aggiunto al repository. Indicazioni rilevanti:
+
+| Voce | Esito | Conseguenza |
+|---|---|---|
+| .NET SDK | Nessun SDK rilevato, presenti runtime .NET 8. Da confermare con `dotnet --list-sdks` | Gli strumenti M0-B sono script Windows PowerShell 5.1, quindi non serve un SDK. Nessuna installazione automatica |
+| Spazio disco | C: sotto i 10 GB liberi; D: disco USB esterno con ampio spazio | Cartelle di modelli, cache e output configurabili (`-OutputDir`), con controllo dello spazio. Nessun modello grande su C: senza una decisione esplicita |
+| Voci TTS | Voci italiane OneCore presenti | B2 verifica la lingua all'ascolto, non solo dal codice di lingua |
+| Microfoni | Presenti più dispositivi di acquisizione (incluso un microfono virtuale di Steam) | B3/B4 dovranno selezionare il dispositivo in modo esplicito |
+| Performance Log Users | Utente già membro | Nessuna azione per PresentMon; da riverificare in B6 |
+
+Correzione allo script: le sezioni della toolchain ora riportano `present`, `exitCode` e `output` in modo esplicito, così «strumento assente» e «nessun SDK» restano distinguibili.
+
 ## 3. Fonti e versioni verificate
 
 | Componente | Stato verificato | Fonte |
@@ -91,7 +105,7 @@ Nessun'altra prova è stata eseguita.
 
 | # | Prova | Come | Criterio |
 |---|---|---|---|
-| B1 | Inventario | `powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Get-QuickPilotInventory.ps1` da utente standard; inviare (dopo revisione) `local-data\m0-inventory.json` | JSON completo, nessun dato personale |
+| B1 | Inventario (✅ eseguito) | `powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Get-QuickPilotInventory.ps1` da utente standard; inviare (dopo revisione) `local-data\m0-inventory.json` | JSON completo, nessun dato personale |
 | B2 | Voci TTS italiane | Dal JSON (sezione `speech`) | Almeno una voce `it-IT` OneCore |
 | B3 | Parola «Quick Pilot» | Prototipo di benchmark (sherpa-onnx KWS) con microfono reale: 50 attivazioni, 30 min di parlato normale, 30 min di voice chat + audio di gioco | ≥ 95% attivazioni; ≤ 1 falso trigger/ora (soglia da confermare) |
 | B4 | ASR comandi | 30 comandi × 3–5 ripetizioni (corpus solo opt-in) su Parakeet, Whisper (vari modelli) e Vosk | Accuratezza intenti, latenza p50/p95, VRAM/RAM |
@@ -101,7 +115,11 @@ Nessun'altra prova è stata eseguita.
 | B8 | Packaging | Installer Velopack per utente + portable di un'app vuota | Nessun UAC, avvio automatico per utente, aggiornamento da release di prova |
 | B9 | Memoria a riposo | Host + ASR caricato | Valore misurato e mostrato in dashboard |
 
-Per B3–B9 servono piccoli prototipi di benchmark (programmi console usa e getta, non codice di prodotto), da preparare nel prossimo passo ed eseguire sul PC.
+Stato degli strumenti (vedi `tools/m0/README.md`):
+- **B1:** eseguito.
+- **B2, B5, B9:** script pronti in `tools/m0/`, controllati per sintassi e con PSScriptAnalyzer, **non ancora eseguiti su Windows**.
+- **B3, B4:** in attesa della scelta della cartella per i modelli e dell'approvazione dei download.
+- **B6, B7, B8:** da preparare.
 
 ## 8. Roadmap aggiornata
 
