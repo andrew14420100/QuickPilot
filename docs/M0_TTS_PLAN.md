@@ -48,7 +48,7 @@ Regole delle misure: niente testi personali, audio generato salvato solo su D:, 
 
 ## Prerequisiti da chiarire con l'utente prima di T1–T4
 
-1. Come gira oggi CosyVoice per JARVIS su questo PC: Windows nativo o WSL/Docker, versione, GPU o CPU, porta o interfaccia del servizio, se esiste.
+1. Come gira oggi CosyVoice per JARVIS su questo PC. Già noto dall'utente: servizio locale sulla **porta 8765**. Da chiarire: Windows nativo o WSL/Docker, versione, GPU o CPU, protocollo ed endpoint del servizio, e se supporta già lo streaming.
 2. Dove si trovano modello e riferimento vocale, così da leggerli senza spostarli.
 3. Se Quick Pilot può interrogare il servizio di JARVIS (stessa istanza) o se serve un'istanza dedicata.
 
