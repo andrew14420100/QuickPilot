@@ -11,13 +11,14 @@ Quick Pilot non deve diventare un chatbot che risponde a lungo prima di agire. I
 Alla prima interazione sul progetto:
 1. Leggi CLAUDE.md, PROMPT_INIZIALE_CLAUDE.md e docs/PRODUCT_DISCOVERY.md.
 2. **Non scrivere codice di prodotto e non iniziare M0 subito.**
-3. Fai all'utente un questionario sostanzioso e ben strutturato (circa 20–30 domande raggruppate per argomento) per comprendere esattamente il software desiderato.
-4. Copri almeno: obiettivi e casi d'uso, controllo vocale/testuale, applicazioni e siti supportati, automazioni browser, acquisti/ordini e conferme, file e operazioni distruttive, email/messaggi/prenotazioni, privacy e credenziali, modalità offline, interfaccia, startup, hotkey, limiti di autonomia, installer, aggiornamenti e costi.
-5. Non chiedere informazioni ricavabili direttamente dal PC in modo sicuro (hardware, versione Windows, toolchain); queste si rilevano dopo, in M0.
-6. Per ogni domanda offri scelte concrete quando aiutano, ma consenti risposte libere e «non lo so, consigliami». L'utente può rispondere parzialmente.
-7. Non ripetere le domande a cui l'utente ha già risposto. Fai un secondo breve giro solo per decisioni essenziali rimaste ambigue.
-8. Dopo le risposte, prepara docs/REQUIREMENTS.md con requisiti funzionali, livelli di rischio/consenso, priorità, esclusioni, casi di accettazione e scelte ancora aperte. Riassumi la specifica e chiedi all'utente di verificarla prima di passare a M0.
-9. Solo dopo il consenso/conferma della specifica si passa a M0. La conferma riguarda la specifica di progetto, non autorizza automaticamente acquisti, invii o azioni reali eseguite dal software futuro.
+3. Fai all'utente un questionario sostanzioso e ben strutturato per comprendere esattamente il software desiderato.
+4. **Devi usare il tool nativo `AskUserQuestion` di Claude Code per consentire all'utente di selezionare le risposte. Non presentare tutte le domande come testo libero né chiedere di copiare un elenco di risposte in chat.**
+5. Poni soltanto 3–4 domande per chiamata a `AskUserQuestion`, con 2–4 opzioni chiare per domanda. Usa selezione singola o multipla in base al caso, descrizioni brevi e l'opzione nativa per risposta personalizzata. Includi, quando utile, «Non lo so, consigliami» o «Decidi più avanti».
+6. Procedi per sezioni e per piccoli gruppi interattivi; adatta il gruppo successivo alle risposte precedenti, mostra una sintesi delle scelte alla fine di ogni sezione e consenti correzioni. Le risposte devono essere registrate e non richieste nuovamente.
+7. Copri almeno: obiettivi e casi d'uso, controllo vocale/testuale, applicazioni e siti supportati, automazioni browser, acquisti/ordini e conferme, file e operazioni distruttive, email/messaggi/prenotazioni, privacy e credenziali, modalità offline, interfaccia, startup, hotkey, limiti di autonomia, installer, aggiornamenti e costi.
+8. Non chiedere informazioni ricavabili direttamente dal PC in modo sicuro (hardware, versione Windows, toolchain); queste si rilevano dopo, in M0. Non ripetere le domande a cui l'utente ha già risposto. Accetta risposte parziali.
+9. Dopo le risposte, prepara docs/REQUIREMENTS.md con requisiti funzionali, livelli di rischio/consenso, priorità, esclusioni, casi di accettazione e scelte ancora aperte. Riassumi la specifica e chiedi all'utente di verificarla prima di passare a M0.
+10. Solo dopo il consenso/conferma della specifica si passa a M0. La conferma riguarda la specifica di progetto, non autorizza automaticamente acquisti, invii o azioni reali eseguite dal software futuro.
 
 ## Cosa significa «automazione generale»
 
