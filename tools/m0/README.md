@@ -15,7 +15,9 @@ Regole comuni:
 | B2 | `Test-QuickPilotTts.ps1` | Elenca le voci italiane OneCore, misura la sintesi, riproduce la frase e chiede se la voce è davvero italiana |
 | B5 | `Measure-QuickPilotLaunch.ps1` | Tempi di avvio (dispatch e finestra visibile) di notepad, Steam, Discord e Spotify |
 | B9 | `Measure-QuickPilotResources.ps1` | Campiona RAM, CPU, GPU e i processi indicati |
-| B4 passo 1 | `Get-QuickPilotM0Models.ps1` | Scarica **solo** sherpa-onnx CPU e Parakeet v3 int8 in `D:\QuickPilotM0\models`, verifica dimensione e SHA-256, estrae solo con `-Extract`, non esegue nulla. Provare prima con `-DryRun` |
+| B4 passo 1 | `Get-QuickPilotM0Models.ps1` | Scarica **solo** sherpa-onnx CPU e Parakeet v3 int8 in `D:\QuickPilotM0\models`. Verifica dimensione e SHA-256 e segue i redirect solo verso host ammessi (`github.com`, `huggingface.co`, `*.githubusercontent.com`, `*.hf.co`). Estrae solo con `-Extract` e non esegue nulla. Provare prima con `-DryRun` |
+| B4 campioni | `New-QuickPilotAsrSamples.ps1` | Genera 10 comandi italiani sintetici con le voci OneCore (nessuna voce dell'utente) in `D:\QuickPilotM0\results\b4-samples` |
+| B4 | `Measure-QuickPilotAsr.ps1` | Riverifica il modello, poi esegue sherpa-onnx-offline (solo CPU, argomenti fissi) su ogni campione. Riporta testo, WER, riconoscimento di «quick pilot», caricamento e decodifica |
 
 ## Ordine consigliato
 
@@ -37,6 +39,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Measure-QuickPilo
 # B9: risorse a riposo (60 s) e durante una sessione di gioco (5 min)
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Measure-QuickPilotResources.ps1 -Seconds 60 -Label riposo
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Measure-QuickPilotResources.ps1 -Seconds 300 -Label gioco
+```
+
+## B4: sequenza completa (dopo i test leggeri)
+
+```powershell
+# 1. Piano senza rete, poi download con verifica ed estrazione (~694 MB su D:)
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Get-QuickPilotM0Models.ps1 -DryRun
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Get-QuickPilotM0Models.ps1 -Extract
+# 2. Campioni sintetici non personali
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\New-QuickPilotAsrSamples.ps1
+# 3. Benchmark ASR su CPU
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Measure-QuickPilotAsr.ps1
 ```
 
 ## Limiti noti

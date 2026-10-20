@@ -16,6 +16,9 @@
     - Non installa nulla, non modifica registro o permessi e non esegue i programmi scaricati.
       L'unica operazione facoltativa (-Extract) usa tar.exe incluso in Windows, dopo aver
       controllato che l'archivio non contenga percorsi assoluti o con «..».
+    - Rete: segue i redirect manualmente (massimo 5) e accetta solo HTTPS verso gli host ufficiali
+      github.com, huggingface.co e i loro CDN (*.githubusercontent.com, *.hf.co); qualsiasi altro
+      host interrompe il download. L'integrità resta comunque garantita da dimensione e SHA-256.
     - Chiede sempre conferma prima di iniziare. -DryRun mostra il piano senza usare la rete.
 
 .EXAMPLE
@@ -71,7 +74,19 @@ $manifest = @(
         size = [int64]93939; sha256 = 'd58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d'; archive = $false
     }
 )
-$allowedHosts = @('github.com', 'huggingface.co')
+# Host ammessi per URL iniziali e redirect: corrispondenza esatta o suffisso di dominio (CDN ufficiali).
+$allowedExactHosts = @('github.com', 'huggingface.co')
+$allowedHostSuffixes = @('.githubusercontent.com', '.hf.co')
+$maxRedirects = 5
+
+function Test-AllowedUri {
+    param([Uri]$Uri)
+    if ($Uri.Scheme -ne 'https') { return $false }
+    $h = $Uri.Host.ToLowerInvariant()
+    if ($allowedExactHosts -contains $h) { return $true }
+    foreach ($suffix in $allowedHostSuffixes) { if ($h.EndsWith($suffix)) { return $true } }
+    $false
+}
 
 function Test-YesAnswer {
     param([string]$Prompt)
@@ -93,13 +108,31 @@ function Test-ManifestFile {
     $null
 }
 
+# Esegue la richiesta seguendo a mano i redirect e controllando ogni host contro l'allowlist.
+function Get-AllowedResponse {
+    param([string]$Url, $Client)
+    $uri = [Uri]$Url
+    for ($hop = 0; $hop -le $maxRedirects; $hop++) {
+        if (-not (Test-AllowedUri $uri)) { throw "Host non ammesso o connessione non HTTPS: $($uri.Scheme)://$($uri.Host)" }
+        $response = $Client.GetAsync($uri, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
+        $code = [int]$response.StatusCode
+        if ($code -ge 300 -and $code -lt 400 -and $response.Headers.Location) {
+            $location = $response.Headers.Location
+            $response.Dispose()
+            $uri = $(if ($location.IsAbsoluteUri) { $location } else { New-Object Uri($uri, $location) })
+            continue
+        }
+        return $response
+    }
+    throw "Troppi redirect (oltre $maxRedirects) per $Url"
+}
+
 # Scarica in streaming su un file .partial nella cartella di destinazione, senza superare la dimensione attesa.
 function Invoke-ManifestDownload {
     param($Entry, [string]$PartialPath, $Client)
-    $response = $Client.GetAsync($Entry.url, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
+    $response = Get-AllowedResponse -Url $Entry.url -Client $Client
     try {
         if (-not $response.IsSuccessStatusCode) { throw ("HTTP {0} per {1}" -f [int]$response.StatusCode, $Entry.url) }
-        if ($response.RequestMessage.RequestUri.Scheme -ne 'https') { throw 'Redirect verso una connessione non HTTPS: interrotto.' }
         $declared = $response.Content.Headers.ContentLength
         if ($null -ne $declared -and $declared -ne $Entry.size) {
             throw ("Il server dichiara {0} B, attesi {1} B: interrotto prima del download." -f $declared, $Entry.size)
@@ -182,14 +215,13 @@ if (-not (Test-YesAnswer 'Procedere con download e verifica di questi file? (s/n
 
 # --- Download e verifica, un file alla volta ------------------------------------------------
 foreach ($e in $manifest) {
-    $hostName = ([Uri]$e.url).Host
-    if ($allowedHosts -notcontains $hostName) { throw "Host non ammesso nel manifest: $hostName" }
+    if (-not (Test-AllowedUri ([Uri]$e.url))) { throw "URL non ammessa nel manifest: $($e.url)" }
 }
 
 Add-Type -AssemblyName System.Net.Http
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 $handler = New-Object System.Net.Http.HttpClientHandler
-$handler.AllowAutoRedirect = $true
+$handler.AllowAutoRedirect = $false
 $client = New-Object System.Net.Http.HttpClient($handler)
 $client.Timeout = [TimeSpan]::FromMinutes(60)
 $client.DefaultRequestHeaders.UserAgent.ParseAdd('QuickPilot-M0/1.0')

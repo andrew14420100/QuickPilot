@@ -170,7 +170,12 @@ Note:
 3. Elemento 3: solo se la licenza viene chiarita o accettata; poi prova B3.
 4. Elemento 5 e/o elemento 6: opzionali, solo se le prove precedenti li giustificano.
 
-Il passo 1 è preparato in `tools/m0/Get-QuickPilotM0Models.ps1`: 693.750.623 B da scaricare, circa 61 MB dopo l'estrazione. Lo script è stato provato end-to-end in un ambiente cloud Linux, non sul PC: tutte le dimensioni e gli hash corrispondono. **Sul PC non è ancora stato eseguito.**
+Il passo 1 è preparato in `tools/m0/Get-QuickPilotM0Models.ps1`: 693.750.623 B da scaricare, circa 61 MB dopo l'estrazione.
+
+- **Rete.** I redirect vengono seguiti a mano, al massimo 5. Ogni passaggio deve essere HTTPS verso un host ammesso: `github.com`, `huggingface.co`, `*.githubusercontent.com` (asset delle release, oggi `release-assets.githubusercontent.com`) o `*.hf.co` (CDN di Hugging Face, oggi `us.aws.cdn.hf.co`). Gli host di destinazione sono quindi limitati a questi domini, non ai soli due host iniziali. L'integrità dipende comunque da dimensione e SHA-256 fissati.
+- **B4 eseguibile subito dopo il download.** `New-QuickPilotAsrSamples.ps1` genera 10 comandi italiani sintetici con le voci OneCore. `Measure-QuickPilotAsr.ps1` riverifica il modello, esegue `sherpa-onnx-offline` solo su CPU e riporta testo, WER, riconoscimento di «quick pilot», tempo di caricamento e di decodifica.
+- **Prove nell'ambiente cloud Linux (non sul PC).** Download ed estrazione reali, con controllo di ogni passaggio di redirect. Rifiuto di un redirect verso un host non ammesso e di un URL non HTTPS. Runner B4 eseguito con sherpa-onnx v1.13.8 per Linux e lo stesso modello int8 sui due campioni ufficiali del repository del modello (inglese e spagnolo): WER 0 e 0,062, decodifica 331 e 411 ms, caricamento 2,8–6,3 s su 4 vCPU cloud. **Sono valori indicativi della pipeline, non misure del PC.** Rifiuto di modello alterato (dimensione o hash), indice campioni mancante e percorsi con virgolette.
+- **Non verificato:** Windows PowerShell 5.1, la generazione dei campioni WinRT, il binario Windows e il disco USB.
 
 Totale dei passi 1–2: circa 1,27 GB su D:. Ogni download verrà verificato su dimensione e SHA-256 prima dell'uso, e verrà scartato se non corrisponde.
 
