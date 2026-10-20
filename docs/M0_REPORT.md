@@ -137,20 +137,40 @@ Dettaglio:
 - **B3, B4:** in attesa della scelta della cartella per i modelli e dell'approvazione dei download.
 - **B6, B7, B8:** da preparare.
 
-### 7.1 Download necessari per B3/B4 (richiedono consenso)
+### 7.1 Manifest dei download per B3/B4 (nessun download ancora autorizzato)
 
-Nessun download è stato fatto. Proposta, con dimensioni **stimate** da verificare sulle pagine ufficiali prima di scaricare:
+Cartelle scelte dall'utente: modelli in **`D:\QuickPilotM0\models`**, risultati in **`D:\QuickPilotM0\results`**. Niente su C:, niente nel repository, nessuna installazione: gli archivi si estraggono con `tar` già incluso in Windows e i programmi si eseguono dalla cartella.
 
-| Componente | Uso | Dimensione stimata | Licenza |
-|---|---|---|---|
-| sherpa-onnx, binari Windows x64 precompilati dalle release ufficiali | Esecuzione di KWS e ASR senza SDK | ~50–150 MB | Apache-2.0 |
-| Modello KWS inglese sherpa-onnx (per «Quick Pilot») | B3 | ~5–20 MB | da verificare sul modello |
-| Parakeet TDT 0.6B v3 int8 (ONNX) | B4 | ~0,7 GB | CC-BY-4.0 |
-| whisper.cpp, binari Windows con CUDA dalle release ufficiali | B4 | ~0,2–0,6 GB | MIT |
-| Modello Whisper (es. large-v3-turbo quantizzato) | B4 | ~0,6–1,6 GB | MIT |
-| Vosk italiano small (riferimento leggero) | B4 | ~50 MB | da verificare |
+Dati raccolti il 2026-10-20.
+- **Dimensioni esatte:** in byte quando la fonte le pubblica, altrimenti come mostrate dalla pagina delle release.
+- **Hash:** SHA-256 pubblicato dalla fonte (digest GitHub o oid LFS di Hugging Face). Dove non è pubblicato, è indicato «non pubblicato». Gli hash marcati «calcolato da noi» li abbiamo ricavati scaricando il file in questo ambiente cloud.
 
-Totale stimato: **circa 2–3 GB**. Percorso proposto: una cartella su **D:** (per esempio `D:\QuickPilotM0\models`) da indicare all'utente. Nulla verrà installato nel sistema: i binari si estraggono nella cartella e si eseguono da lì.
+| # | File | Fonte ufficiale | Dimensione | Dopo estrazione | Licenza pesi / binari | SHA-256 |
+|---|---|---|---|---|---|---|
+| 1 | `sherpa-onnx-v1.13.8-win-x64-shared-MT-Release-no-tts.tar.bz2` (runtime CPU, CRT statico, quindi nessun VC++ redistributable) | [release v1.13.8](https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.13.8) | 22,2 MB | da misurare (stima 50–80 MB) | Apache-2.0 (codice) | `4b0a94f7b5c606b1b64a19a831c2127559e4b3d34e195465ebc7be73d9ed4783` |
+| 2a | Parakeet TDT 0.6B v3 **int8**: `encoder.int8.onnx` | [HF csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8) | 652.184.281 B | nessuna estrazione | **CC-BY-4.0** (pesi NVIDIA, [model card](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)); il repo di conversione non dichiara una licenza propria | `acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247` |
+| 2b | `decoder.int8.onnx` | idem | 11.845.275 B | — | CC-BY-4.0 | `179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e` |
+| 2c | `joiner.int8.onnx` | idem | 6.355.277 B | — | CC-BY-4.0 | `3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3` |
+| 2d | `tokens.txt` | idem | 93.939 B | — | CC-BY-4.0 | `d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d` (calcolato da noi) |
+| 3 | `sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2` (parola di attivazione, inglese) | [release kws-models](https://github.com/k2-fsa/sherpa-onnx/releases/tag/kws-models) | 16,8 MB | da misurare (stima 20–40 MB) | **non dichiarata** (addestrato su GigaSpeech) → da chiarire prima del download | non pubblicato (la release contiene un `checksum.txt` da leggere prima del download) |
+| 4a | `whisper-bin-x64.zip` (whisper.cpp **CPU**) | [release v1.8.3](https://github.com/ggml-org/whisper.cpp/releases/tag/v1.8.3), l'ultima con binari Windows (v1.9.4–1.9.5 pubblicano solo sorgenti) | 3,78 MB | da misurare | MIT | `d824b1e37599f882b396e73f1ee0bfd5d0529f700314c48311dcbd00b803321d` |
+| 4b | `ggml-large-v3-turbo-q5_0.bin` | [HF ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) | 574.041.195 B (547 MiB) | nessuna estrazione | MIT (pesi Whisper OpenAI) | `394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2` |
+| 5 | `whisper-cublas-12.4.0-bin-x64.zip` (opzionale, GPU) | release v1.8.3 | 439 MB | da misurare | MIT; include DLL CUDA NVIDIA (licenza CUDA) | `c12a563333d3c3707be70754dc0e87c1cb58aa6333a87055bbcf9b524488dfb0` |
+| 6 | `vosk-model-small-it-0.22.zip` (opzionale, riferimento) | [alphacephei.com/vosk/models](https://alphacephei.com/vosk/models) | 49.665.141 B | 91.299.150 B (20 file) | Apache-2.0 | `9ec65e75861d1c6c2e457cccd932705340dcdf233f5b239f00733b4de0bf3267` (calcolato da noi; la fonte non pubblica checksum) |
+
+Note:
+- **Parakeet:** si scaricano **solo** i quattro file int8 (circa 670,5 MB in tutto), non l'intero repository. I file `test_wavs/` non servono.
+- **Elemento 5 (whisper CUDA):** è compilato per CUDA 12.4, mentre l'RTX 5070 Ti (architettura Blackwell) è supportata ufficialmente da CUDA 12.8 in poi. Il funzionamento su GPU **non è garantito**, quindi conviene provarlo solo dopo la versione CPU.
+- **Elemento 6 (Vosk):** per eseguirlo serve anche la libreria runtime Vosk per Windows, un ulteriore download non ancora censito. WER pubblicato per il modello small: 16,88% su Common Voice. Proposta: rimandarlo, o escluderlo se Parakeet o Whisper bastano.
+- **Elemento 3 (parola di attivazione):** finché la licenza dei pesi resta non dichiarata, l'alternativa senza download aggiuntivi è riconoscere «Quick Pilot» con l'ASR (Parakeet) e un confronto di testo. Costa di più in CPU/GPU, ma B3 lo misura comunque.
+
+**Ordine proposto, un passo alla volta, verificando ciascuno prima del successivo:**
+1. Elementi 1 + 2 (circa 693 MB): runtime sherpa-onnx CPU e Parakeet int8, poi prova B4 su CPU.
+2. Elementi 4a + 4b (circa 578 MB): whisper.cpp CPU con large-v3-turbo q5_0, poi confronto in B4.
+3. Elemento 3: solo se la licenza viene chiarita o accettata; poi prova B3.
+4. Elemento 5 e/o elemento 6: opzionali, solo se le prove precedenti li giustificano.
+
+Totale dei passi 1–2: circa 1,27 GB su D:. Ogni download verrà verificato su dimensione e SHA-256 prima dell'uso, e verrà scartato se non corrisponde.
 
 ## 8. Roadmap aggiornata
 

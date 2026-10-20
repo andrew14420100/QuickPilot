@@ -22,7 +22,7 @@ param(
     [ValidateRange(250, 10000)][int]$IntervalMs = 1000,
     [ValidatePattern('^[\w\-\.]+$')][string[]]$ProcessName = @(),
     [ValidatePattern('^[\w\-]+$')][string]$Label = 'riposo',
-    [string]$OutputDir = (Join-Path (Get-Location) 'local-data\m0')
+    [string]$OutputDir = 'D:\QuickPilotM0\results'
 )
 
 $ErrorActionPreference = 'Stop'

@@ -18,7 +18,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$OutputDir = (Join-Path (Get-Location) 'local-data\m0'),
+    [string]$OutputDir = 'D:\QuickPilotM0\results',
     [string]$Text = 'Quick Pilot. Ordine da 89 euro e 90 centesimi su un negozio di prova: confermi?',
     [ValidateRange(1, 20)][int]$Repetitions = 3,
     [switch]$NoPlayback

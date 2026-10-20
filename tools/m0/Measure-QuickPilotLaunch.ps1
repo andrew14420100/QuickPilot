@@ -26,7 +26,7 @@ param(
     [Parameter(Mandatory)][ValidateSet('notepad', 'steam', 'discord', 'spotify')][string]$Target,
     [ValidateRange(1, 30)][int]$Repetitions = 1,
     [ValidateRange(5, 180)][int]$TimeoutSeconds = 60,
-    [string]$OutputDir = (Join-Path (Get-Location) 'local-data\m0'),
+    [string]$OutputDir = 'D:\QuickPilotM0\results',
     [switch]$Force
 )
 

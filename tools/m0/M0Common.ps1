@@ -20,6 +20,9 @@ function Resolve-M0OutputDir {
     $full = [IO.Path]::GetFullPath($Path)
     $root = [IO.Path]::GetPathRoot($full)
     $drive = New-Object IO.DriveInfo($root)
+    if (-not $drive.IsReady) {
+        throw ("Unità {0} non disponibile (disco esterno scollegato?). Collegarla o indicare -OutputDir." -f $root)
+    }
     $freeMB = [math]::Round($drive.AvailableFreeSpace / 1MB, 0)
     if ($freeMB -lt $RequiredMB) {
         throw ("Spazio insufficiente su {0}: {1} MB liberi, servono almeno {2} MB. Usare -OutputDir su un'altra unità." -f $root, $freeMB, $RequiredMB)

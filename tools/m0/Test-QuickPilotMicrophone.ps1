@@ -24,7 +24,7 @@ param(
     [ValidateRange(1, 10)][int]$SilenceSeconds = 3,
     [ValidateRange(1, 15)][int]$SpeechSeconds = 4,
     [switch]$ListOnly,
-    [string]$OutputDir = (Join-Path (Get-Location) 'local-data\m0')
+    [string]$OutputDir = 'D:\QuickPilotM0\results'
 )
 
 $ErrorActionPreference = 'Stop'

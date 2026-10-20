@@ -5,7 +5,7 @@ Strumenti **usa e getta** per la fase M0 di Quick Pilot. Non sono codice di prod
 Regole comuni:
 - Si eseguono con **Windows PowerShell 5.1** (`powershell.exe`), da utente standard. Non serve né viene installato un .NET SDK.
 - Nessuna rete, nessuna installazione, nessuna modifica di permessi o impostazioni.
-- I risultati vanno in `local-data\m0` (escluso da Git). Con `-OutputDir` si può scegliere un'altra cartella, per esempio sul disco D:. Gli strumenti controllano lo spazio libero e avvisano sotto i 10 GB.
+- I risultati delle prove B2–B9 vanno in **`D:\QuickPilotM0\results`** (scelta dell'utente), fuori dal repository. Si può cambiare con `-OutputDir`. Gli strumenti si fermano se l'unità non è collegata o lo spazio è insufficiente, e avvisano sotto i 10 GB. L'inventario B1 resta in `local-data\` (escluso da Git).
 - I file prodotti restano locali. Se li condividi, controllali prima.
 
 | Prova | Script | Cosa fa |
