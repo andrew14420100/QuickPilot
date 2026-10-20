@@ -1,6 +1,6 @@
 # Quick Pilot — Specifica dei requisiti (D1)
 
-Stato: **bozza da approvare**. Raccolta requisiti D0 svolta il 2026-10-20 tramite selezioni interattive.
+Stato: **approvata dall'utente il 2026-10-20**, inclusi i default [P]. Raccolta requisiti D0 svolta il 2026-10-20 tramite selezioni interattive.
 L'approvazione di questo documento riguarda la specifica di progetto: **non autorizza** acquisti, invii, prenotazioni o altre azioni reali eseguite dal software.
 
 Legenda delle origini: **[U]** scelta dell'utente · **[C]** default consigliato accettato dall'utente («consigliami») · **[P]** default prudente applicato perché la domanda è rimasta senza risposta (modificabile in revisione).
@@ -246,7 +246,6 @@ I gruppi successivi avranno criteri propri, definiti all'inizio di ciascuna mile
 | 6 | Modello LLM locale e quantizzazione | M0 |
 | 7 | Gmail via API ufficiale o via web; fattibilità di Telegram e Discord | Prima del gruppo 4 |
 | 8 | Scadenza esatta della conferma R2 e timeout della sessione continua | M1 |
-| 9 | Ordine dei gruppi 3–5, lingua e regola R2 nelle routine (default [P] applicati) | Revisione di questa specifica |
 
 ## 11. Rischi principali
 
