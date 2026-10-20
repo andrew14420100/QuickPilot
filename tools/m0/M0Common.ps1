@@ -130,6 +130,66 @@ function Get-M0WordErrorRate {
     [math]::Round($prev[$m] / $n, 3)
 }
 
+# Percorso di nvidia-smi: PATH, poi le posizioni standard del driver NVIDIA. $null se assente.
+function Find-M0NvidiaSmi {
+    $cmd = Get-Command 'nvidia-smi' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($cmd) { return $cmd.Source }
+    foreach ($candidate in @(
+            $(if ($env:SystemRoot) { Join-Path $env:SystemRoot 'System32\nvidia-smi.exe' }),
+            $(if ($env:ProgramFiles) { Join-Path $env:ProgramFiles 'NVIDIA Corporation\NVSMI\nvidia-smi.exe' }))) {
+        if ($candidate -and (Test-Path -LiteralPath $candidate -PathType Leaf)) { return $candidate }
+    }
+    $null
+}
+
+# Un campione GPU da nvidia-smi (prima GPU). Usa Process invece dell'operatore & per avere
+# codice di uscita e stderr affidabili anche in Windows PowerShell 5.1. Non lancia eccezioni:
+# in caso di problemi restituisce ok = $false con il motivo in «error».
+function Get-M0NvidiaSample {
+    param([Parameter(Mandatory)][string]$SmiPath, [int]$TimeoutMs = 5000)
+    $result = [ordered]@{ ok = $false; memoryUsedMB = $null; utilizationPercent = $null; error = $null }
+    try {
+        $psi = New-Object Diagnostics.ProcessStartInfo
+        $psi.FileName = $SmiPath
+        $psi.Arguments = '--query-gpu=memory.used,utilization.gpu --format=csv,noheader,nounits'
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $process = [Diagnostics.Process]::Start($psi)
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit($TimeoutMs)) {
+            $process.Kill()
+            $result.error = "timeout dopo $TimeoutMs ms"
+            return $result
+        }
+        $process.WaitForExit()
+        $stdout = $stdoutTask.Result
+        if ($process.ExitCode -ne 0) {
+            $result.error = ("codice di uscita {0}: {1} {2}" -f $process.ExitCode, $stdout.Trim(), $stderrTask.Result.Trim()).Trim()
+            return $result
+        }
+        $line = @($stdout -split "`r?`n" | Where-Object { $_.Trim() })[0]
+        $fields = @("$line" -split ',\s*')
+        $memory = 0.0; $util = 0.0
+        $invariant = [Globalization.CultureInfo]::InvariantCulture
+        if ($fields.Count -lt 2 -or
+            -not [double]::TryParse($fields[0].Trim(), [Globalization.NumberStyles]::Float, $invariant, [ref]$memory) -or
+            -not [double]::TryParse($fields[1].Trim(), [Globalization.NumberStyles]::Float, $invariant, [ref]$util)) {
+            $result.error = "output non interpretabile: '$line'"
+            return $result
+        }
+        $result.ok = $true
+        $result.memoryUsedMB = $memory
+        $result.utilizationPercent = $util
+    }
+    catch {
+        $result.error = $_.Exception.Message
+    }
+    $result
+}
+
 # Chiede conferma esplicita (s/n) prima di un'azione visibile, salvo -Force del chiamante.
 function Confirm-M0Action {
     param([string]$Message, [switch]$Force)

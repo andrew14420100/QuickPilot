@@ -118,6 +118,23 @@ Assert-M0Test 'WER: una cancellazione su tre = 0.333' {
 }
 Assert-M0Test 'WER: tutto sbagliato = 1' { (Get-M0WordErrorRate -Reference @('a', 'b') -Hypothesis @('c', 'd')) -eq 1 }
 
+# --- nvidia-smi: un percorso inesistente produce un errore descritto, non un'eccezione ----------
+Assert-M0Test 'GPU: eseguibile mancante -> ok=false con motivo' {
+    $r = Get-M0NvidiaSample -SmiPath (Join-Path $TempDir 'non-esiste-nvidia-smi.exe')
+    (-not $r.ok) -and $r.error
+}
+$realSmi = Find-M0NvidiaSmi
+if ($realSmi) {
+    Assert-M0Test "GPU: campione reale da $realSmi" {
+        $r = Get-M0NvidiaSample -SmiPath $realSmi
+        if (-not $r.ok) { Write-Output "      motivo: $($r.error)" }
+        $r.ok
+    }
+}
+else {
+    Write-Output 'SKIP  GPU: nvidia-smi non trovato su questo sistema'
+}
+
 # --- Statistiche: 0, 1, molti valori --------------------------------------------------------
 Assert-M0Test 'riepilogo: 0 valori' { (Get-M0Summary ([double[]]@())).n -eq 0 }
 Assert-M0Test 'riepilogo: 1 valore' { $s = Get-M0Summary ([double[]]@(42)); $s.n -eq 1 -and $s.p95 -eq 42 }

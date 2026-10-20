@@ -30,7 +30,9 @@ $ErrorActionPreference = 'Stop'
 Assert-M0WindowsPowerShell
 $OutputDir = Resolve-M0OutputDir -Path $OutputDir -RequiredMB 5
 
-$smi = Get-Command 'nvidia-smi' -ErrorAction SilentlyContinue
+$smiPath = Find-M0NvidiaSmi
+if ($smiPath) { Write-Output "nvidia-smi: $smiPath" } else { Write-Warning 'nvidia-smi non trovato: nessuna misura GPU.' }
+$gpuErrors = @{}
 $totalRamMB = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1MB, 0)
 
 $availableMB = @(); $cpuPercent = @(); $gpuUsedMB = @(); $gpuUtil = @()
@@ -43,12 +45,15 @@ while ($sw.Elapsed.TotalSeconds -lt $Seconds) {
     $availableMB += [math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1KB, 0)
     $cpuPercent += [double](Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor -Filter "Name='_Total'").PercentProcessorTime
 
-    if ($smi) {
-        $line = & $smi.Source '--query-gpu=memory.used,utilization.gpu' '--format=csv,noheader,nounits' 2>$null | Select-Object -First 1
-        if ($LASTEXITCODE -eq 0 -and $line) {
-            $f = "$line" -split ',\s*'
-            $gpuUsedMB += [double]$f[0]
-            $gpuUtil += [double]$f[1]
+    if ($smiPath) {
+        $gpu = Get-M0NvidiaSample -SmiPath $smiPath
+        if ($gpu.ok) {
+            $gpuUsedMB += $gpu.memoryUsedMB
+            $gpuUtil += $gpu.utilizationPercent
+        }
+        else {
+            if (-not $gpuErrors.ContainsKey($gpu.error)) { Write-Warning "Campione GPU non valido: $($gpu.error)" ; $gpuErrors[$gpu.error] = 0 }
+            $gpuErrors[$gpu.error]++
         }
     }
 
@@ -60,6 +65,10 @@ while ($sw.Elapsed.TotalSeconds -lt $Seconds) {
         }
     }
     Start-Sleep -Milliseconds $IntervalMs
+}
+
+if ($smiPath -and $gpuUsedMB.Count -eq 0) {
+    Write-Warning 'Nessun campione GPU valido: vedere gpuErrors nel file dei risultati.'
 }
 
 $processReport = [ordered]@{}
@@ -79,9 +88,11 @@ $report = [ordered]@{
     totalRamMB     = $totalRamMB
     availableRamMB = Get-M0Summary ([double[]]$availableMB)
     cpuPercent     = Get-M0Summary ([double[]]$cpuPercent)
-    gpuMemoryUsedMB = $(if ($smi) { Get-M0Summary ([double[]]$gpuUsedMB) } else { 'nvidia-smi non trovato' })
-    gpuUtilPercent = $(if ($smi) { Get-M0Summary ([double[]]$gpuUtil) } else { 'nvidia-smi non trovato' })
-    processes      = $processReport
+    nvidiaSmiPath  = $smiPath
+    gpuMemoryUsedMB = $(if ($smiPath) { Get-M0Summary ([double[]]$gpuUsedMB) } else { 'nvidia-smi non trovato' })
+    gpuUtilPercent = $(if ($smiPath) { Get-M0Summary ([double[]]$gpuUtil) } else { 'nvidia-smi non trovato' })
+    gpuErrors      = $gpuErrors
+    processes      = $(if ($ProcessName.Count -gt 0) { $processReport } else { 'nessun processo richiesto (-ProcessName)' })
 }
 $path = Save-M0Result -Object $report -OutputDir $OutputDir -Name "b9-resources-$Label"
 Write-Output ($report | ConvertTo-Json -Depth 6)
