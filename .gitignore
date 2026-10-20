@@ -1,0 +1,42 @@
+# .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build output
+publish/
+artifacts/
+release/
+dist/
+out/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.pfx
+*.p12
+*.snk
+
+# Local diagnostics, recordings and personal data
+logs/
+*.log
+recordings/
+audio-corpus/
+chrome-profile-copy/
+local-data/
+*.db
+*.sqlite
+*.sqlite3
+
+# OS and editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
