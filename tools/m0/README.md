@@ -19,10 +19,6 @@ Regole comuni:
 ## Ordine consigliato
 
 ```powershell
-# 0. Verifica manuale della toolchain (solo lettura)
-dotnet --list-sdks
-dotnet --list-runtimes
-
 # B2: voci TTS (riproduce audio dalle casse o dalle cuffie predefinite)
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Test-QuickPilotTts.ps1
 
