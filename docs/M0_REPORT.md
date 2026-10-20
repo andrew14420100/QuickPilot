@@ -52,7 +52,7 @@ Correzione alla radice:
 - `Read-M0JsonArray` gestisce anche il caso in cui PS 5.1 restituisce l'array JSON come oggetto unico.
 - Controllati tutti gli accessi a `.Count` negli script M0.
 - B5 ora si ferma, senza chiusure forzate, se il target resta in esecuzione dopo la chiusura: così un processo Notepad persistente non falsa le misure.
-- Nuovo `Test-M0Common.ps1`: 23 controlli su 0, 1 e molti elementi con processi finti. Passano in PowerShell 7.4 su Linux. **In PowerShell 7 il bug originale non si riproduce**, quindi il self-test va eseguito in Windows PowerShell 5.1 sul PC.
+- Nuovo `Test-M0Common.ps1`: 23 controlli su 0, 1 e molti elementi con processi finti. Passano in PowerShell 7.4 su Linux. **In PowerShell 7 il bug originale non si riproduce**, quindi il self-test va eseguito in Windows PowerShell 5.1 sul PC. **Eseguito sul PC in Windows PowerShell 5.1 (Desktop): 25 controlli, 0 falliti**, incluso un campione GPU reale letto da `nvidia-smi` in `System32`.
 
 ## 3. Fonti e versioni verificate
 
