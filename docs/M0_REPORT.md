@@ -85,7 +85,7 @@ Correzione alla radice:
 | Parola «Quick Pilot» | **sherpa-onnx keyword spotting** (Apache-2.0) con frase inglese a vocabolario aperto | openWakeWord addestrato su misura; ASR in streaming + confronto frase | Locale, gratuito, nessuna licenza di rete; «Quick Pilot» è foneticamente inglese |
 | ASR comandi | **Da scegliere col benchmark** tra Parakeet TDT 0.6B v3 (sherpa-onnx, CC-BY-4.0) e Whisper (whisper.cpp/Whisper.net, CUDA) | Vosk italiano come riferimento leggero | Requisito di precisione su italiano con nomi inglesi |
 | Intenti | Parser deterministico + corrispondenza approssimata su catalogo app/giochi | — | Percorso critico senza LLM |
-| TTS | **Voci italiane Windows OneCore** (Windows.Media.SpeechSynthesis) | Piper (licenze da verificare) | Zero dipendenze e già presenti nel sistema (da confermare con l'inventario) |
+| TTS | **Voce personalizzata JARVIS** (CosyVoice 3 `Fun-CosyVoice3-0.5B`, servizio locale persistente con streaming). Decisione dell'utente del 2026-10-20 | Voci OneCore Cosimo/Elsa solo come riserva | Naturalezza e riconoscibilità; latenza da misurare (T1–T4 in `docs/M0_TTS_PLAN.md`) |
 | LLM opzionale | llama.cpp (MIT) con modello scelto per licenza e VRAM | — | Modulo separato, mai nel percorso rapido |
 | App desktop | Shell/Win32, UI Automation (es. FlaUI, MIT, da verificare) | — | |
 | Steam / Discord / Spotify | Protocolli `steam://`, `discord://`; controlli media di Windows (SMTC) | — | Interfacce supportate, nessun hook nei processi |
@@ -141,8 +141,25 @@ Stato degli strumenti (vedi `tools/m0/README.md`), ordinati per priorità:
 | 5 | B9 risorse a riposo/in gioco | `Measure-QuickPilotResources.ps1` | 🟡 **Riposo misurato sul PC** (60 s, 41 campioni): RAM disponibile p50 18.679 MB su 31.621 MB (circa 12,9 GB in uso), CPU p50 1%, p95 5%, massimo 8%. **GPU non misurata:** 0 campioni validi, il che non significa GPU a zero. Causa probabile: la lettura di nvidia-smi tramite pipeline in PS 5.1. Corretta: ora usa un processo dedicato con codice di uscita, timeout e motivi d'errore registrati (`gpuErrors`), cerca nvidia-smi anche nei percorsi standard del driver e avvisa se non ci sono campioni. Da ripetere |
 | 6 | B4 ASR (CPU) | `Get-QuickPilotM0Models.ps1`, `New-QuickPilotAsrSamples.ps1`, `Measure-QuickPilotAsr.ps1` | 🟡 **Campioni generati sul PC** (10 con Cosimo, 10 con Elsa). Downloader eseguito sul PC con `-Extract`: 5 file verificati, runtime estratto, nessun programma avviato. **B4 Parakeet int8 su CPU eseguito sul PC** (Windows PowerShell 5.1, 4 thread, 20 campioni sintetici, hash del modello verificati): WER medio 0,18 (Cosimo ≈ 0,208, Elsa ≈ 0,151), 5/20 corrispondenze esatte, «quick pilot» riconosciuto 12/20 (60%), decodifica p50 99 ms e p95 115 ms, caricamento del modello p50 1.074 ms.
 
-  **Valutazione:** la pipeline funziona e la decodifica su CPU è molto rapida (ben sotto il budget dei 2 s). Il riconoscimento testuale della parola «Quick Pilot» è però **insufficiente** e non va usato come parola di attivazione. Limiti: audio sintetico, numeri in lettere e in cifre non equiparati, nessuna prova su parlato reale, falsi positivi o audio di gioco. Prossimo confronto: Whisper su CPU con gli stessi 20 campioni, previo consenso al download (§7.1, passo 2). Download e benchmark in attesa del consenso esplicito dell'utente (§7.1) |
-| 6b | B3 parola di attivazione | da preparare | ⏸ Dopo B4 |
+  **Valutazione:** la pipeline funziona e la decodifica su CPU è molto rapida (ben sotto il budget dei 2 s). Il riconoscimento testuale della parola «Quick Pilot» è però **insufficiente** e non va usato come parola di attivazione. Limiti: audio sintetico, numeri in lettere e in cifre non equiparati, nessuna prova su parlato reale, falsi positivi o audio di gioco. Prossimo confronto: Whisper su CPU con gli stessi 20 campioni, previo consenso al download (§7.1, passo 2).
+
+- **Passo 2 (Whisper), predisposto il 2026-10-20.** Fonti riverificate:
+  - `whisper-bin-x64.zip`: release [v1.8.3](https://github.com/ggml-org/whisper.cpp/releases/tag/v1.8.3), l'ultima con binari Windows (v1.9.4–1.9.5 pubblicano solo sorgenti). 3.968.674 B, SHA-256 `d824b1e3…803321d` (digest GitHub, ricalcolato dopo il download), 9.944.064 B dopo l'estrazione (21 file in `Release/`).
+  - `ggml-large-v3-turbo-q5_0.bin`: revisione Hugging Face [`5359861c`](https://huggingface.co/ggerganov/whisper.cpp/tree/5359861c739e955e79d9a303bcbc70fb988958b1), 574.041.195 B, SHA-256 `39422170…5a55ffa7e2`.
+  - Licenze: codice MIT (whisper.cpp e ggml; il pacchetto include `SDL2.dll`, licenza zlib). Pesi MIT (OpenAI Whisper; conversione ggml MIT).
+  - Totale download 578.009.869 B (≈ 551,2 MiB); con l'estrazione ≈ 561 MiB. Il dry run chiede circa 651 MiB liberi su D: con il margine; con `-Extract`, circa 661 MiB.
+  - **Prerequisito:** le tabelle di import del binario Windows richiedono il Visual C++ Redistributable 2015-2022 x64 (`MSVCP140`, `VCRUNTIME140`, `VCRUNTIME140_1`, `VCOMP140`). Non viene installato: il runner verifica le DLL e si ferma se mancano.
+- **Prove nel cloud Linux (non sul PC).**
+  - whisper.cpp v1.8.3 compilato dai sorgenti dello stesso tag. Il formato di output (testo su stdout con `-nt`, tempi `whisper_print_timings` su stderr) è stato verificato e la conversione dei WAV da 22/24 kHz è automatica.
+  - Download ed estrazione reali del passo 2 con `bsdtar`, della stessa famiglia del `tar.exe` di Windows.
+  - Runner su due campioni ufficiali: WER 0 e 0,062.
+  - Su 4 vCPU cloud generiche la trascrizione ha richiesto circa 60 s per campione: per frasi brevi l'encoder elabora comunque una finestra di 30 s. **Non è indicativo del 9800X3D, ma segnala il rischio principale di Whisper su CPU: la latenza.** Il runner permette di provare `-AudioContext` per ridurre la finestra, con possibile perdita di accuratezza.
+  - Gestiti con errori espliciti per campione: codice di uscita non zero, output senza tempi, trascrizione vuota, timestamp inattesi, timeout con chiusura del processo, file mancante, modello alterato, DLL VC++ mancanti.
+  - Self-test 30/30, PSScriptAnalyzer pulito.
+  - **Il binario Windows di whisper.cpp non è mai stato eseguito.** Download e benchmark in attesa del consenso esplicito dell'utente (§7.1) |
+| 6a | B4 confronto Whisper (CPU) | `Get-QuickPilotWhisperModels.ps1`, `Measure-QuickPilotWhisper.ps1`, `Compare-QuickPilotAsr.ps1` | 🟡 **Predisposto**, provato solo nel cloud Linux. **Nessun download Whisper sul PC**: in attesa del dry run e del consenso dell'utente |
+| 6b | B3 parola di attivazione | da preparare | ⏸ Dopo il confronto ASR |
+| 6c | T1–T4 voce di risposta JARVIS | da preparare | ⏸ Dopo il confronto ASR (`docs/M0_TTS_PLAN.md`) |
 | 7 | B6 impatto in gioco, B7 estensione Chrome, B8 packaging | da preparare | ⏸ Dopo B3/B4 |
 
 Dettaglio:

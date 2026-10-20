@@ -118,6 +118,33 @@ Assert-M0Test 'WER: una cancellazione su tre = 0.333' {
 }
 Assert-M0Test 'WER: tutto sbagliato = 1' { (Get-M0WordErrorRate -Reference @('a', 'b') -Hypothesis @('c', 'd')) -eq 1 }
 
+# --- Output di whisper-cli: ben formato, CRLF, senza tempi, senza testo, con timestamp ----------
+$timings = "whisper_print_timings:     load time =   703.57 ms`nwhisper_print_timings:   encode time = 31623.78 ms /     1 runs`nwhisper_print_timings:    total time = 33912.77 ms"
+Assert-M0Test 'whisper: output ben formato' {
+    $r = ConvertFrom-M0WhisperOutput -Stdout "`n Quick Pilot, annulla." -Stderr $timings
+    $r.ok -and $r.text -eq 'Quick Pilot, annulla.' -and $r.loadMs -eq 703.57 -and $r.transcribeMs -eq 33209.2 -and $r.encodeMs -eq 31623.78
+}
+Assert-M0Test 'whisper: righe CRLF unite' {
+    $r = ConvertFrom-M0WhisperOutput -Stdout "Quick Pilot,`r`n apri Steam.`r`n" -Stderr $timings
+    $r.ok -and $r.text -eq 'Quick Pilot, apri Steam.'
+}
+Assert-M0Test 'whisper: tempi mancanti -> errore' {
+    $r = ConvertFrom-M0WhisperOutput -Stdout 'Quick Pilot' -Stderr 'error: failed to open model'
+    (-not $r.ok) -and $r.error -match 'tempi'
+}
+Assert-M0Test 'whisper: stdout vuoto -> errore' {
+    $r = ConvertFrom-M0WhisperOutput -Stdout "`n  `n" -Stderr $timings
+    (-not $r.ok) -and $r.error -match 'nessuna trascrizione'
+}
+Assert-M0Test 'whisper: stdout $null -> errore' {
+    $r = ConvertFrom-M0WhisperOutput -Stdout $null -Stderr $null
+    (-not $r.ok) -and $r.error
+}
+Assert-M0Test 'whisper: timestamp inattesi -> errore' {
+    $r = ConvertFrom-M0WhisperOutput -Stdout '[00:00:00.000 --> 00:00:02.000]  Quick Pilot' -Stderr $timings
+    (-not $r.ok) -and $r.error -match 'timestamp'
+}
+
 # --- nvidia-smi: un percorso inesistente produce un errore descritto, non un'eccezione ----------
 Assert-M0Test 'GPU: eseguibile mancante -> ok=false con motivo' {
     $r = Get-M0NvidiaSample -SmiPath (Join-Path $TempDir 'non-esiste-nvidia-smi.exe')

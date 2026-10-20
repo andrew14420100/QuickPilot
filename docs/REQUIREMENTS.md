@@ -45,7 +45,7 @@ Documenti e fogli di calcolo (Word/Excel/PDF), app di produttività/Office, auto
 | IN-8 Microfono | Icona tray colorata (in ascolto parola / sessione attiva / in pausa), pausa rapida (hotkey o «Quick Pilot, smetti di ascoltare»), pausa automatica in chiamata o nelle app scelte. | [U] |
 | IN-9 Audio | Mai salvato su disco; solo corpus di test **opt-in**. | [U] |
 | IN-10 Feedback | Bolla di stato (avanzamento, esito, errore). | [U] |
-| IN-11 Lettura vocale | Sintesi vocale locale **sempre** per i riepiloghi R2 e quando servono le scelte di disambiguazione. | [U] |
+| IN-11 Lettura vocale | Sintesi vocale locale **sempre** per i riepiloghi R2 e quando servono le scelte di disambiguazione. Voce ufficiale: **voce personalizzata JARVIS** (CosyVoice 3 `Fun-CosyVoice3-0.5B`, locale), senza modificarla né ri-clonarla; latenza da ottimizzare e misurare (`docs/M0_TTS_PLAN.md`). Voci OneCore come eventuale riserva. | [U] (decisione del 2026-10-20) |
 
 Test e sviluppo possono iniettare testo nel motore tramite un'interfaccia interna di test; non è una funzione esposta all'utente.
 

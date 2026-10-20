@@ -1,12 +1,15 @@
 ﻿<#
 .SYNOPSIS
-    M0-B, passo 1: scarica e verifica il runtime sherpa-onnx (CPU) e il modello Parakeet TDT 0.6B v3 int8.
+    M0-B: scarica e verifica, un passo alla volta, i runtime e i modelli ASR approvati in docs/M0_REPORT.md §7.1.
 
 .DESCRIPTION
-    Strumento usa e getta per M0, non codice di prodotto. Scarica ESCLUSIVAMENTE:
-      1. sherpa-onnx v1.13.8, archivio Windows x64 CPU (shared-MT-Release-no-tts);
-      2. i quattro file di Parakeet TDT 0.6B v3 int8 (encoder, decoder, joiner, tokens),
-         da una revisione immutabile del repository Hugging Face.
+    Strumento usa e getta per M0, non codice di prodotto. Scarica ESCLUSIVAMENTE i file del passo scelto:
+      -Step 1: sherpa-onnx v1.13.8, archivio Windows x64 CPU (shared-MT-Release-no-tts), e i quattro
+               file di Parakeet TDT 0.6B v3 int8 (encoder, decoder, joiner, tokens);
+      -Step 2: whisper.cpp v1.8.3, archivio Windows x64 CPU (whisper-bin-x64.zip), e il modello
+               ggml-large-v3-turbo-q5_0.bin. Richiede il Visual C++ Redistributable 2015-2022 x64
+               già presente nel sistema (non viene installato).
+    I modelli Hugging Face sono scaricati da una revisione immutabile del repository.
     Regole:
     - Scrive solo sotto -ModelsRoot (predefinito D:\QuickPilotM0\models); rifiuta l'unità di sistema.
       I download parziali (*.partial) restano nella stessa cartella, quindi su D:.
@@ -14,7 +17,7 @@
       al primo controllo fallito elimina il proprio file parziale e si interrompe.
     - Non sovrascrive né elimina file esistenti senza chiedere.
     - Non installa nulla, non modifica registro o permessi e non esegue i programmi scaricati.
-      L'unica operazione facoltativa (-Extract) usa tar.exe incluso in Windows, dopo aver
+      L'unica operazione facoltativa (-Extract) usa tar.exe incluso in Windows (tar.bz2 e zip), dopo aver
       controllato che l'archivio non contenga percorsi assoluti o con «..».
     - Rete: segue i redirect manualmente (massimo 5) e accetta solo HTTPS verso gli host ufficiali
       github.com, huggingface.co e i loro CDN (*.githubusercontent.com, *.hf.co); qualsiasi altro
@@ -27,9 +30,12 @@
     powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Get-QuickPilotM0Models.ps1
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Get-QuickPilotM0Models.ps1 -Extract
+.EXAMPLE
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Get-QuickPilotM0Models.ps1 -Step 2 -DryRun
 #>
 [CmdletBinding()]
 param(
+    [ValidateSet(1, 2)][int]$Step = 1,
     [string]$ModelsRoot = 'D:\QuickPilotM0\models',
     [switch]$Extract,
     [switch]$DryRun
@@ -38,10 +44,13 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2.0
 
-# Manifest fisso del passo 1 (fonti: docs/M0_REPORT.md §7.1). Nessun altro file viene scaricato.
+# Manifest fissi per passo (fonti: docs/M0_REPORT.md §7.1). Nessun altro file viene scaricato.
 $parakeetRepo = 'https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8'
 $parakeetRevision = '2bda32ec70b097a55adaa07d9a7173915b43cc78'
-$manifest = @(
+$whisperModelRepo = 'https://huggingface.co/ggerganov/whisper.cpp'
+$whisperModelRevision = '5359861c739e955e79d9a303bcbc70fb988958b1'
+$manifests = @{}
+$manifests[1] = @(
     [ordered]@{
         id      = 'sherpa-onnx-runtime'
         folder  = 'sherpa-onnx'
@@ -49,6 +58,7 @@ $manifest = @(
         url     = 'https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-v1.13.8-win-x64-shared-MT-Release-no-tts.tar.bz2'
         size    = [int64]23271851
         sha256  = '4b0a94f7b5c606b1b64a19a831c2127559e4b3d34e195465ebc7be73d9ed4783'
+        license = 'codice: Apache-2.0 (sherpa-onnx; include onnxruntime, MIT)'
         archive = $true
         archiveRoot = 'sherpa-onnx-v1.13.8-win-x64-shared-MT-Release-no-tts'
         extractedBytes = [int64]63623365
@@ -56,24 +66,49 @@ $manifest = @(
     [ordered]@{
         id = 'parakeet-encoder'; folder = 'parakeet-tdt-0.6b-v3-int8'; file = 'encoder.int8.onnx'
         url = "$parakeetRepo/resolve/$parakeetRevision/encoder.int8.onnx"
-        size = [int64]652184281; sha256 = 'acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247'; archive = $false
+        size = [int64]652184281; sha256 = 'acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247'
+        license = 'pesi: CC-BY-4.0 (NVIDIA Parakeet TDT 0.6B v3); conversione ONNX senza licenza propria dichiarata'; archive = $false
     },
     [ordered]@{
         id = 'parakeet-decoder'; folder = 'parakeet-tdt-0.6b-v3-int8'; file = 'decoder.int8.onnx'
         url = "$parakeetRepo/resolve/$parakeetRevision/decoder.int8.onnx"
-        size = [int64]11845275; sha256 = '179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e'; archive = $false
+        size = [int64]11845275; sha256 = '179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e'
+        license = 'pesi: CC-BY-4.0 (NVIDIA Parakeet TDT 0.6B v3); conversione ONNX senza licenza propria dichiarata'; archive = $false
     },
     [ordered]@{
         id = 'parakeet-joiner'; folder = 'parakeet-tdt-0.6b-v3-int8'; file = 'joiner.int8.onnx'
         url = "$parakeetRepo/resolve/$parakeetRevision/joiner.int8.onnx"
-        size = [int64]6355277; sha256 = '3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3'; archive = $false
+        size = [int64]6355277; sha256 = '3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3'
+        license = 'pesi: CC-BY-4.0 (NVIDIA Parakeet TDT 0.6B v3); conversione ONNX senza licenza propria dichiarata'; archive = $false
     },
     [ordered]@{
         id = 'parakeet-tokens'; folder = 'parakeet-tdt-0.6b-v3-int8'; file = 'tokens.txt'
         url = "$parakeetRepo/resolve/$parakeetRevision/tokens.txt"
-        size = [int64]93939; sha256 = 'd58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d'; archive = $false
+        size = [int64]93939; sha256 = 'd58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d'
+        license = 'pesi: CC-BY-4.0 (NVIDIA Parakeet TDT 0.6B v3); conversione ONNX senza licenza propria dichiarata'; archive = $false
     }
 )
+$manifests[2] = @(
+    [ordered]@{
+        id      = 'whisper-cpp-runtime'
+        folder  = 'whisper-cpp-v1.8.3'
+        file    = 'whisper-bin-x64.zip'
+        url     = 'https://github.com/ggml-org/whisper.cpp/releases/download/v1.8.3/whisper-bin-x64.zip'
+        size    = [int64]3968674
+        sha256  = 'd824b1e37599f882b396e73f1ee0bfd5d0529f700314c48311dcbd00b803321d'
+        license = 'codice: MIT (whisper.cpp/ggml; include SDL2.dll, zlib). Richiede VC++ Redistributable 2015-2022 x64'
+        archive = $true
+        archiveRoot = 'Release'
+        extractedBytes = [int64]9944064
+    },
+    [ordered]@{
+        id = 'whisper-large-v3-turbo-q5_0'; folder = 'whisper-large-v3-turbo-q5_0'; file = 'ggml-large-v3-turbo-q5_0.bin'
+        url = "$whisperModelRepo/resolve/$whisperModelRevision/ggml-large-v3-turbo-q5_0.bin"
+        size = [int64]574041195; sha256 = '394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2'
+        license = 'pesi: MIT (OpenAI Whisper large-v3-turbo; conversione ggml MIT)'; archive = $false
+    }
+)
+$manifest = $manifests[$Step]
 # Host ammessi per URL iniziali e redirect: corrispondenza esatta o suffisso di dominio (CDN ufficiali).
 $allowedExactHosts = @('github.com', 'huggingface.co')
 $allowedHostSuffixes = @('.githubusercontent.com', '.hf.co')
@@ -168,7 +203,7 @@ function Invoke-ManifestDownload {
 # Controlla che le voci dell'archivio stiano tutte sotto la cartella radice attesa.
 function Assert-SafeArchive {
     param([string]$TarPath, [string]$ArchivePath, [string]$ExpectedRoot)
-    $entries = @(& $TarPath -tjf $ArchivePath)
+    $entries = @(& $TarPath -tf $ArchivePath)
     if ($LASTEXITCODE -ne 0) { throw 'Impossibile leggere l''elenco dell''archivio.' }
     foreach ($name in $entries) {
         $normalized = $name -replace '\\', '/'
@@ -194,10 +229,11 @@ $extractBytes = $(if ($Extract) { ($manifest | Where-Object { $_.archive } | For
 $requiredBytes = $downloadBytes + $extractBytes + 100MB
 $freeBytes = $drive.AvailableFreeSpace
 
-Write-Output 'Quick Pilot M0-B, passo 1: file previsti'
+Write-Output ("Quick Pilot M0-B, passo {0}: file previsti" -f $Step)
 foreach ($e in $manifest) {
     Write-Output ("  - {0}\{1}  {2:N0} B  sha256 {3}" -f $e.folder, $e.file, $e.size, $e.sha256)
     Write-Output ("      {0}" -f $e.url)
+    Write-Output ("      licenza: {0}" -f $e.license)
 }
 Write-Output ("Destinazione: {0}" -f $root)
 Write-Output ("Totale download: {0:N1} MB; estrazione: {1}; spazio richiesto (con margine): {2:N1} MB; libero: {3:N1} MB" -f
@@ -288,7 +324,7 @@ if ($Extract) {
             continue
         }
         $count = Assert-SafeArchive -TarPath $tarPath -ArchivePath $archivePath -ExpectedRoot $e.archiveRoot
-        & $tarPath -xjf $archivePath -C $folder
+        & $tarPath -xf $archivePath -C $folder
         if ($LASTEXITCODE -ne 0) { throw "Estrazione fallita per $($e.file)." }
         Write-Output ("[OK] Estratte {0} voci in {1}. Nessun programma è stato eseguito." -f $count, $target)
     }
@@ -296,12 +332,12 @@ if ($Extract) {
 
 # Registro locale della verifica (resta su D:, fuori dal repository).
 $log = [ordered]@{
-    step           = 'M0-B passo 1'
+    step           = "M0-B passo $Step"
     verifiedAtUtc  = (Get-Date).ToUniversalTime().ToString('o')
-    parakeetRevision = $parakeetRevision
+    huggingFaceRevision = $(if ($Step -eq 1) { $parakeetRevision } else { $whisperModelRevision })
     files          = @($verified | ForEach-Object { [ordered]@{ path = "$($_.folder)\$($_.file)"; size = $_.size; sha256 = $_.sha256 } })
     extracted      = [bool]$Extract
 }
-$logPath = Join-Path $root ('m0-step1-verified-{0}.json' -f (Get-Date).ToString('yyyyMMdd-HHmmss'))
+$logPath = Join-Path $root ('m0-step{0}-verified-{1}.json' -f $Step, (Get-Date).ToString('yyyyMMdd-HHmmss'))
 [IO.File]::WriteAllText($logPath, ($log | ConvertTo-Json -Depth 5), (New-Object Text.UTF8Encoding($false)))
 Write-Output ("Completato. Registro della verifica: {0}" -f $logPath)

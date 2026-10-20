@@ -190,6 +190,98 @@ function Get-M0NvidiaSample {
     $result
 }
 
+# Percorso di un file esistente da passare a un processo esterno tra virgolette: si rifiutano
+# caratteri che altererebbero la riga di comando. Restituisce il percorso completo.
+function Assert-M0SafePath {
+    param([Parameter(Mandatory)][string]$Path)
+    if ($Path -match '["\r\n]') { throw "Percorso non ammesso: $Path" }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "File mancante: $Path" }
+    [IO.Path]::GetFullPath($Path)
+}
+
+# Verifica dimensione e, salvo -SkipHash, SHA-256 di un file; lancia un errore se non corrispondono.
+function Assert-M0FileIntegrity {
+    param([Parameter(Mandatory)][string]$Path, [int64]$Size, [string]$Sha256, [switch]$SkipHash)
+    $name = Split-Path -Leaf $Path
+    $length = (Get-Item -LiteralPath $Path).Length
+    if ($length -ne $Size) { throw ("{0}: dimensione {1} B, attesa {2} B." -f $name, $length, $Size) }
+    if (-not $SkipHash) {
+        $hash = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($hash -ne $Sha256) { throw ("{0}: SHA-256 non corrispondente." -f $name) }
+    }
+}
+
+# Esegue un programma con argomenti già validati, senza shell, catturando stdout/stderr.
+# Termina il processo se supera il timeout. Restituisce codice di uscita, durata e output.
+function Invoke-M0Process {
+    param(
+        [Parameter(Mandatory)][string]$FilePath,
+        [Parameter(Mandatory)][string]$Arguments,
+        [int]$TimeoutSeconds = 120
+    )
+    $psi = New-Object Diagnostics.ProcessStartInfo
+    $psi.FileName = $FilePath
+    $psi.Arguments = $Arguments
+    $psi.WorkingDirectory = Split-Path -Parent $FilePath
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $process = [Diagnostics.Process]::Start($psi)
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        $process.Kill()
+        throw ("{0} non ha terminato entro {1} s." -f (Split-Path -Leaf $FilePath), $TimeoutSeconds)
+    }
+    $process.WaitForExit()
+    $sw.Stop()
+    [ordered]@{
+        exitCode    = $process.ExitCode
+        wallSeconds = $sw.Elapsed.TotalSeconds
+        stdout      = $stdoutTask.Result
+        stderr      = $stderrTask.Result
+    }
+}
+
+# Tempo in millisecondi da una riga «whisper_print_timings: <nome> time = <valore> ms»; $null se assente.
+function Get-M0WhisperTiming {
+    param([string]$Stderr, [string]$Name)
+    if (-not $Stderr) { return $null }
+    $m = [regex]::Match($Stderr, 'whisper_print_timings:\s+' + [regex]::Escape($Name) + ' time =\s+([\d.]+) ms')
+    if (-not $m.Success) { return $null }
+    [double]::Parse($m.Groups[1].Value, [Globalization.CultureInfo]::InvariantCulture)
+}
+
+# Interpreta l'output di whisper-cli eseguito con -nt (testo senza timestamp su stdout,
+# tempi su stderr), formato verificato con whisper.cpp v1.8.3. Non lancia eccezioni:
+# se l'output non è quello atteso restituisce ok = $false con il motivo in «error».
+function ConvertFrom-M0WhisperOutput {
+    param([string]$Stdout, [string]$Stderr)
+    $result = [ordered]@{ ok = $false; text = $null; loadMs = $null; encodeMs = $null; totalMs = $null; transcribeMs = $null; error = $null }
+    $result.loadMs = Get-M0WhisperTiming $Stderr 'load'
+    $result.encodeMs = Get-M0WhisperTiming $Stderr 'encode'
+    $result.totalMs = Get-M0WhisperTiming $Stderr 'total'
+    if ($null -eq $result.loadMs -or $null -eq $result.totalMs) {
+        $result.error = 'tempi whisper_print_timings (load/total) non trovati'
+        return $result
+    }
+    $lines = @("$Stdout" -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if ($lines.Count -eq 0) {
+        $result.error = 'nessuna trascrizione su stdout'
+        return $result
+    }
+    if (@($lines | Where-Object { $_ -match '^\[\d{2}:\d{2}' }).Count -gt 0) {
+        $result.error = 'formato inatteso: trascrizione con timestamp (atteso -nt)'
+        return $result
+    }
+    $result.text = ($lines -join ' ').Trim()
+    $result.transcribeMs = [math]::Round($result.totalMs - $result.loadMs, 1)
+    $result.ok = $true
+    $result
+}
+
 # Chiede conferma esplicita (s/n) prima di un'azione visibile, salvo -Force del chiamante.
 function Confirm-M0Action {
     param([string]$Message, [switch]$Force)
