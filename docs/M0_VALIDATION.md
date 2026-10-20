@@ -1,8 +1,12 @@
 # M0 — Piano di validazione tecnica
 
+## Prerequisito
+
+M0 si avvia **solo dopo D0 (questionario) e D1 (specifica confermata)**. Non sostituisce la raccolta requisiti con una decisione tecnica prematura.
+
 ## Scopo
 
-Verificare le scelte tecniche prima di implementare l'applicazione completa. Non presentare stime come risultati misurati.
+Verificare architettura, stack, dipendenze, capacità cross-app e rischi prima dello sviluppo esteso. Non presentare stime come misure.
 
 ## Inventario ambiente
 
@@ -13,80 +17,79 @@ Rilevare senza elevazione, quando disponibile:
 - Dischi e spazio libero.
 - Microfoni e dispositivo audio predefinito.
 - Versioni di .NET SDK, Git e strumenti di build.
-- Disponibilità degli strumenti locali necessari alle prove.
+- Browser e strumenti disponibili.
+- Disponibilità degli strumenti locali per le prove.
 
-Non acquisire né pubblicare identificativi personali non necessari.
+Non raccogliere né pubblicare identificativi personali non necessari.
 
 ## Verifica dipendenze
 
 Per ogni dipendenza proposta, registrare:
 - Nome e versione corrente verificata.
 - Fonte ufficiale.
-- Licenza del codice.
-- Licenza del modello, se differente.
+- Licenza codice e licenza modello se differente.
 - Requisiti runtime e dimensioni.
-- Attività/manutenzione osservabile.
-- Compatibilità Windows e C#.
+- Stato di manutenzione osservabile.
+- Compatibilità Windows/C#.
 - Eventuali costi o servizi online.
-- Decisione: adottare, confrontare ancora, oppure scartare.
+- Decisione e motivazione.
 
-## Riconoscimento vocale
+## Comandi veloci e riconoscimento vocale
 
-Preparare un corpus di almeno 30 comandi reali, con 3–5 ripetizioni ciascuno in condizioni diverse. Non salvare registrazioni senza consenso esplicito.
+Preparare almeno 30 comandi con 3–5 ripetizioni in condizioni diverse, se possibile. Non salvare registrazioni senza consenso esplicito.
 
 Misurare:
-- Percentuale di testo riconosciuto correttamente.
-- Percentuale di intenti risolti correttamente.
-- Falsi positivi su silenzio e frasi non pertinenti.
-- Latenza finale del riconoscimento.
-- RAM utilizzata a motore caricato.
-- Dimensione totale dei file necessari.
+- accuratezza trascrizione;
+- accuratezza intenti;
+- falsi positivi;
+- latenza ASR;
+- memoria e spazio;
+- tempo intent-to-dispatch.
 
-Valutare Vosk con grammatica ristretta e un'alternativa locale; scegliere con dati misurati sul PC reale.
+Confrontare motori offline e grammatica ristretta sul PC reale. Non dichiarare un test vocale completato senza aver usato davvero il microfono del PC di destinazione.
 
-## Latenza
+## Browser e automazioni multi-step
 
-Separare:
-- Fine comando (rilascio push-to-talk o fine parlato rilevata).
-- Fine ASR.
-- Risoluzione intento.
-- Dispatch handler.
-- Ritorno API/process start.
-- Comparsa finestra visibile, quando misurabile.
+Selezionare inizialmente browser e siti in base alle risposte D0/D1. Per ogni integrazione:
+- documentare interfacce disponibili e termini/restrizioni pertinenti;
+- verificare accessibilità, DOM/API e stabilità;
+- definire autenticazione e interventi manuali;
+- definire timeout, verifica dell'esito e recovery;
+- usare ambienti di test o dati innocui dove possibile;
+- non automatizzare transazioni reali durante benchmark.
 
-Eseguire test ripetibili con WAV e azioni di prova innocue. Riportare p50, p95, massimo e numero campioni. Il target di 2 secondi riguarda il dispatch delle azioni semplici; non garantisce il tempo di avvio della finestra esterna.
+Non assumere che un sito sia stabile o automatizzabile solo perché si può aprire nel browser.
 
-## Chrome
+## Transazioni e acquisti
 
-Per la cronologia:
-- Verificare posizione del profilo e gestione dei profili multipli.
-- Copiare il database e gli eventuali file ausiliari necessari.
-- Aprire la copia in sola lettura.
-- Verificare che l'originale non sia modificato.
-- Convertire correttamente i timestamp UTC/Chrome in data locale.
-
-Per il ripristino di sessione:
-- Valutare un'estensione locale opzionale con permessi minimi.
-- Documentare permessi, installazione manuale e limiti.
-- Non tentare installazione silenziosa o policy amministrativa.
+Definire e testare un modello di conferma:
+- riepilogo dei dati correnti;
+- conferma legata a singola transazione;
+- invalidazione del consenso se i dettagli cambiano;
+- prevenzione dei doppi invii in retry;
+- log senza credenziali o dati di pagamento sensibili;
+- passaggio manuale per CAPTCHA, MFA e antifrode;
+- nessun click finale reale in test automatizzati.
 
 ## Diagnostica
 
-Per ciascuna metrica definire fonte, unità, intervallo, disponibilità da utente standard e affidabilità. Le metriche non accessibili devono risultare non disponibili, mai stimate arbitrariamente.
+Per ogni metrica definire fonte, unità, disponibilità come utente standard e affidabilità. Metriche non accessibili devono risultare indisponibili e mai inventate. FPS, frame time e temperature vanno verificati separatamente per hardware e strumenti.
 
-FPS/frame time e temperature dipendono da strumenti e hardware: verificarne compatibilità e privilegi separatamente.
+## Packaging
+
+Verificare modalità portable e installer per utente senza elevazione per le funzioni ordinarie. Documentare requisiti, dimensioni, SmartScreen e componenti da scaricare. Non promettere che SmartScreen non avvisi un eseguibile non firmato.
 
 ## Rapporto richiesto
 
 Creare docs/M0_REPORT.md con:
 1. Data e ambiente delle prove.
-2. Fonti verificate e data della consultazione.
-3. Test eseguiti e comandi usati.
-4. Risultati misurati e campione.
-5. Stime separate dai risultati reali.
-6. Dipendenze raccomandate e motivazione.
-7. Rischi e limiti.
-8. Architettura raccomandata.
-9. Milestone aggiornate e criteri di accettazione.
+2. Fonti aggiornate e versioni verificate.
+3. Test realmente eseguiti e risultati.
+4. Stime separate da misure.
+5. Capacità e connettori raccomandati.
+6. Limiti, rischi, costi e prerequisiti.
+7. Architettura motivata.
+8. Roadmap e criteri di accettazione aggiornati.
+9. Prove ancora da eseguire sul PC reale.
 
-Se una prova richiede un componente non disponibile, segnalarlo come non eseguito e spiegare come svolgerla sul PC di destinazione.
+Se una prova non è possibile, dichiarare il motivo e la procedura per completarla in modo riproducibile.
