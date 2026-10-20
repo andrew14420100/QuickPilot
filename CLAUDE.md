@@ -2,88 +2,85 @@
 
 ## Missione
 
-Costruire Quick Pilot, un'applicazione Windows 11 locale per automatizzazioni deterministiche e veloci. Non è un chatbot e non è un assistente basato su LLM. Il percorso ordinario deve essere: comando riconosciuto → intento tipizzato → azione registrata → esito.
+Costruire **Quick Pilot**, una piattaforma di automazione generale per Windows 11. Deve poter crescere oltre apertura app e diagnostica: automazioni tra applicazioni, browser, siti web, file e workflow multi-step. Esempio: cercare e confrontare prodotti, compilare un carrello e preparare il checkout, ma richiedere conferma esplicita e specifica prima dell'invio dell'ordine o del pagamento.
 
-## Prima di lavorare
+Quick Pilot non deve diventare un chatbot che risponde a lungo prima di agire. Il percorso critico delle azioni rapide deve rimanere leggero e misurabile. Un modello generativo non è richiesto per l'esecuzione: se l'utente desidera in seguito funzioni opzionali basate su modelli, vanno decise durante la raccolta requisiti e mantenute fuori dal confine di sicurezza delle azioni.
 
-1. Leggi questo file, PROMPT_INIZIALE_CLAUDE.md e tutti i documenti in docs pertinenti alla milestone corrente.
-2. Ispeziona lo stato Git, l'albero dei file, le versioni degli strumenti presenti e l'ambiente Windows.
-3. Non presumere che una repository contenente specifiche sia già un'applicazione implementata.
-4. Per le versioni e licenze che potrebbero essere cambiate, verifica fonti ufficiali aggiornate quando l'accesso web è disponibile. Se non puoi verificarle, dichiaralo chiaramente.
-5. Non chiedere informazioni che puoi ricavare in modo sicuro dal PC. Non stampare credenziali, dati personali o contenuti sensibili durante la diagnostica.
+## REGOLA PIÙ IMPORTANTE: PRIMA FAI DOMANDE
 
-## Regole non negoziabili
+Alla prima interazione sul progetto:
+1. Leggi CLAUDE.md, PROMPT_INIZIALE_CLAUDE.md e docs/PRODUCT_DISCOVERY.md.
+2. **Non scrivere codice di prodotto e non iniziare M0 subito.**
+3. Fai all'utente un questionario sostanzioso e ben strutturato (circa 20–30 domande raggruppate per argomento) per comprendere esattamente il software desiderato.
+4. Copri almeno: obiettivi e casi d'uso, controllo vocale/testuale, applicazioni e siti supportati, automazioni browser, acquisti/ordini e conferme, file e operazioni distruttive, email/messaggi/prenotazioni, privacy e credenziali, modalità offline, interfaccia, startup, hotkey, limiti di autonomia, installer, aggiornamenti e costi.
+5. Non chiedere informazioni ricavabili direttamente dal PC in modo sicuro (hardware, versione Windows, toolchain); queste si rilevano dopo, in M0.
+6. Per ogni domanda offri scelte concrete quando aiutano, ma consenti risposte libere e «non lo so, consigliami». L'utente può rispondere parzialmente.
+7. Non ripetere le domande a cui l'utente ha già risposto. Fai un secondo breve giro solo per decisioni essenziali rimaste ambigue.
+8. Dopo le risposte, prepara docs/REQUIREMENTS.md con requisiti funzionali, livelli di rischio/consenso, priorità, esclusioni, casi di accettazione e scelte ancora aperte. Riassumi la specifica e chiedi all'utente di verificarla prima di passare a M0.
+9. Solo dopo il consenso/conferma della specifica si passa a M0. La conferma riguarda la specifica di progetto, non autorizza automaticamente acquisti, invii o azioni reali eseguite dal software futuro.
 
-- Nessun LLM generativo nel percorso standard dei comandi.
-- Nessun servizio cloud o API con costo obbligatorio.
-- Niente testo riconosciuto eseguito come comando di shell o codice.
-- Il testo riconosciuto seleziona esclusivamente azioni predefinite con parametri tipizzati e convalidati.
-- Mai combinare input dell'utente in stringhe di comando arbitrarie. Preferire API e argomenti separati.
-- L'applicazione deve operare come utente standard. Non aggirare UAC e non elevare privilegi in modo nascosto.
-- Le funzioni amministrative o non disponibili senza privilegi devono rimanere opzionali e spiegare i propri limiti.
-- Per i dati di Chrome, lavorare su copie temporanee del database e non modificare il profilo originale.
-- Non inventare metriche, risultati, compatibilità o esiti dei test.
-- Non cancellare, resettare o riscrivere dati esistenti senza necessità e autorizzazione.
-- Non introdurre dipendenze senza verificarne compatibilità, manutenzione, licenza e utilità.
-- Nessun segreto, token, password, cronologia browser o dati personali in Git.
+## Cosa significa «automazione generale»
 
-## Strategia prestazionale
+Non ridurre il prodotto a un launcher. Progetta un catalogo estensibile di capacità e connettori per:
+- Applicazioni desktop Windows.
+- Browser e siti web.
+- File e cartelle.
+- Diagnostica e monitoraggio.
+- Workflow composti da più azioni.
+- Compilazione di moduli e raccolta di informazioni.
+- Preparazione di acquisti, prenotazioni e altri workflow transazionali, sempre con conferma umana prima dell'atto finale.
 
-Misura separatamente:
-- Tempo di fine cattura audio / rilascio del push-to-talk.
-- Tempo del riconoscimento vocale.
-- Tempo di risoluzione dell'intento.
-- Tempo di dispatch dell'azione.
-- Tempo fino alla comparsa visibile della finestra dell'app lanciata, quando misurabile.
+Non promettere che qualunque app o sito funzionerà senza integrazione specifica. Crea una matrice delle capacità: supportato, parzialmente supportato, non supportato, prerequisiti e limiti. Preferisci API ufficiali quando disponibili, altrimenti automazione browser/UI accessibile e testata. Non aggirare paywall, CAPTCHA, MFA, anti-frode, controlli accesso o restrizioni del servizio.
 
-L'obiettivo inferiore a 2 secondi riguarda il dispatch dei comandi semplici e deve essere validato con test ripetibili. Non promettere che ogni applicazione mostri la propria finestra entro 2 secondi: il suo avvio a freddo dipende dal programma e dal sistema.
+## Regole di sicurezza e conferma
 
-## Lavoro per milestone
+Classifica ogni azione con un livello di rischio:
+- **R0 — Lettura/apertura:** può essere eseguita automaticamente se il target è certo.
+- **R1 — Reversibile:** può essere eseguita secondo le preferenze configurate, con riepilogo e possibilità di annullamento dove esiste.
+- **R2 — Esterno o con conseguenze:** inviare messaggi/email, pubblicare, prenotare, acquistare, pagare, eliminare o condividere richiede conferma specifica immediatamente prima dell'azione finale.
+- **R3 — Privilegi elevati/sicurezza:** mai aggirare UAC o chiedere privilegi in modo nascosto. Le azioni non supportate da utente standard devono essere escluse o presentate come passaggio manuale opzionale.
 
-Lavora solo sulla milestone corrente:
-1. Analisi e M0.
-2. Core comandi scritti e lancio applicazioni.
-3. Voce offline italiana.
-4. File e cartelle.
-5. Diagnostica rapida.
-6. Cronologia Chrome.
-7. Snapshot e ripristino sessioni tramite estensione opzionale.
-8. Diagnostica gaming opzionale.
-9. Packaging portable e installer per utente.
+Per un acquisto online, prima della conferma mostra: negozio, articolo e variante, quantità, prezzo unitario, spedizione, imposte se note, totale, indirizzo/destinazione in forma non eccessivamente esposta, data di consegna se disponibile e metodo di pagamento non sensibile. La conferma deve riferirsi a quella transazione specifica. Se prezzo, quantità, indirizzo, metodo o totale cambiano, invalidare la conferma e richiederla di nuovo.
 
-Ogni milestone deve avere piano, implementazione limitata, test, verifica dei risultati e aggiornamento dei documenti. Evita di costruire tutto contemporaneamente.
+Non memorizzare password, CVV o numeri completi di carte. Preferire sessioni e password manager già gestiti dall'utente; fermarsi per CAPTCHA, MFA, autenticazione, verifica antifrode e passaggi che richiedono interazione umana. Non completare un acquisto o inviare denaro senza consenso esplicito e aggiornato.
 
-## M0 prima del prodotto
+## Sicurezza esecutiva
 
-Non implementare ancora il prodotto completo. M0 deve produrre un rapporto con:
-- Hardware e ambiente rilevati.
-- Confronto tecnico delle opzioni pertinenti.
-- Verifica corrente di versioni, licenze e requisiti.
-- Rischi, limiti e dipendenze.
-- Prove vocali e di latenza possibili nell'ambiente.
-- Decisione proposta e criteri misurabili.
-- Roadmap rivista, se necessaria.
+- Nessun testo riconosciuto diventa codice shell/PowerShell arbitrario.
+- L'intento seleziona azioni tipizzate e registrate con parametri convalidati.
+- Non concatenare input libero dentro stringhe di comando.
+- Ogni workflow deve avere piano/stato, log locale, timeout, gestione errori e cancellazione quando possibile.
+- Chiedere conferma quando il target o il significato sono ambigui.
+- Non cancellare, inviare, acquistare o modificare dati senza le conferme previste.
+- Nessun bypass dei controlli di Windows o dei siti.
+- Nessun segreto, token, password, cronologia browser o dato personale in Git.
+- Preferire funzionamento locale e nessun servizio cloud/API a pagamento obbligatori.
 
-Non inventare misurazioni se il microfono, l'hardware o l'ambiente di esecuzione non sono accessibili. Distingui chiaramente tra prove eseguite, stime e attività ancora da eseguire.
+## Performance
+
+L'obiettivo sotto i 2 secondi riguarda il dispatch delle azioni semplici una volta terminato il comando; va misurato. Non promettere che siti o applicazioni esterne completino in due secondi le proprie operazioni. Il motore deve mostrare progressi per workflow lunghi e non bloccare la UI.
+
+Misura separatamente riconoscimento voce, interpretazione, pianificazione, conferma, dispatch, completamento e verifica del risultato.
+
+## Processo
+
+Fasi obbligatorie:
+- **D0:** questionario approfondito.
+- **D1:** specifica dei requisiti, revisione con l'utente.
+- **M0:** verifica tecnica di stack, licenze, prestazioni, integrazioni e rischi.
+- **M1+ :** implementazione progressiva per capacità prioritarie.
+
+Non saltare D0/D1. L'utente ha chiesto espressamente che Claude faccia molte domande prima di sviluppare.
 
 ## Qualità
 
-- Usa .NET e C# come ipotesi iniziale da validare in M0; non scegliere framework alternativi senza motivazione.
-- Tieni separati host, audio, riconoscimento, intenti, azioni, integrazioni, diagnostica e telemetria.
-- Aggiungi test unitari al parser e test d'integrazione alle azioni con effetti controllati.
-- Esegui build, test e analisi dopo ogni cambiamento significativo.
-- Correggi gli errori rilevati; non silenziarli indiscriminatamente.
-- Aggiorna README, roadmap e report di test con i risultati effettivi.
-- Usa commit piccoli e descrittivi. Prima dei commit controlla git diff e git status.
+- Usa .NET/C# e WPF come ipotesi iniziale, non come scelta irrevocabile prima della verifica.
+- Moduli isolati per host, audio, intenti, pianificatore workflow, registro azioni, connettori app/browser, file, diagnostica e telemetria.
+- Ogni capacità deve avere test, logging, gestione errori e criteri di accettazione.
+- Correggere errori e avvisi significativi; non silenziarli indiscriminatamente.
+- Commit piccoli e descrittivi; prima di commit/push verificare diff e stato Git.
+- Non dichiarare funzioni o test completati senza prove reali.
 
-## Comportamento quando hai finito una fase
+## Conclusione di ogni fase
 
-Riporta:
-1. Cosa hai ispezionato o modificato.
-2. Test eseguiti con comandi e risultati reali.
-3. Metriche misurate e metodo usato.
-4. Limiti e problemi aperti.
-5. Percorsi dei file importanti.
-6. Prossima milestone e criteri di completamento.
-
-Non dichiarare completata una funzione non implementata o non verificata.
+Riferire attività, file, test, metriche, problemi aperti e fase successiva. Distinguere sempre tra implementato, testato, parzialmente supportato e non supportato.
