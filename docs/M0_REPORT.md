@@ -27,7 +27,11 @@ Nessun'altra prova è stata eseguita.
 
 ## 2b. Esito dell'inventario B1 (eseguito dall'utente su Windows)
 
-Il JSON grezzo resta sul PC e non viene aggiunto al repository. Indicazioni rilevanti:
+Il JSON grezzo resta sul PC e non viene aggiunto al repository. Dati sintetici forniti dall'utente: Windows 11 Pro x64 (build 26300), Ryzen 7 9800X3D, 32 GB di RAM, RTX 5070 Ti 16 GB, Chrome 155 con 2 profili, microfoni SB Katana V2X e Steam Streaming Microphone, voci OneCore Microsoft Cosimo ed Elsa.
+
+Valutazione preliminare (stima, non misura): CPU, RAM e VRAM sono ampiamente sufficienti per ASR locale e per un LLM opzionale di piccole o medie dimensioni. Il vincolo reale è lo **spazio su C:**, quindi modelli e cache vanno su D:. Va però misurata la latenza di caricamento da un disco USB.
+
+Indicazioni rilevanti:
 
 | Voce | Esito | Conseguenza |
 |---|---|---|
@@ -115,11 +119,38 @@ Correzione allo script: le sezioni della toolchain ora riportano `present`, `exi
 | B8 | Packaging | Installer Velopack per utente + portable di un'app vuota | Nessun UAC, avvio automatico per utente, aggiornamento da release di prova |
 | B9 | Memoria a riposo | Host + ASR caricato | Valore misurato e mostrato in dashboard |
 
-Stato degli strumenti (vedi `tools/m0/README.md`):
+Stato degli strumenti (vedi `tools/m0/README.md`), ordinati per priorità:
+
+| Ordine | Prova | Strumento | Stato |
+|---|---|---|---|
+| 1 | B1 inventario | `Get-QuickPilotInventory.ps1` | ✅ **Eseguita** dall'utente |
+| 2 | B2 voci TTS | `Test-QuickPilotTts.ps1` | 🟡 Predisposta, da eseguire |
+| 3 | Scelta microfono (prerequisito di B3/B4) | `Test-QuickPilotMicrophone.ps1` | 🟡 Predisposta, da eseguire |
+| 4 | B5 avvio app | `Measure-QuickPilotLaunch.ps1` | 🟡 Predisposta, da eseguire |
+| 5 | B9 risorse a riposo/in gioco | `Measure-QuickPilotResources.ps1` | 🟡 Predisposta, da eseguire |
+| 6 | B3 parola di attivazione, B4 ASR | da preparare | ⏸ In attesa del consenso al download (§7.1) |
+| 7 | B6 impatto in gioco, B7 estensione Chrome, B8 packaging | da preparare | ⏸ Dopo B3/B4 |
+
+Dettaglio:
 - **B1:** eseguito.
 - **B2, B5, B9:** script pronti in `tools/m0/`, controllati per sintassi e con PSScriptAnalyzer, **non ancora eseguiti su Windows**.
 - **B3, B4:** in attesa della scelta della cartella per i modelli e dell'approvazione dei download.
 - **B6, B7, B8:** da preparare.
+
+### 7.1 Download necessari per B3/B4 (richiedono consenso)
+
+Nessun download è stato fatto. Proposta, con dimensioni **stimate** da verificare sulle pagine ufficiali prima di scaricare:
+
+| Componente | Uso | Dimensione stimata | Licenza |
+|---|---|---|---|
+| sherpa-onnx, binari Windows x64 precompilati dalle release ufficiali | Esecuzione di KWS e ASR senza SDK | ~50–150 MB | Apache-2.0 |
+| Modello KWS inglese sherpa-onnx (per «Quick Pilot») | B3 | ~5–20 MB | da verificare sul modello |
+| Parakeet TDT 0.6B v3 int8 (ONNX) | B4 | ~0,7 GB | CC-BY-4.0 |
+| whisper.cpp, binari Windows con CUDA dalle release ufficiali | B4 | ~0,2–0,6 GB | MIT |
+| Modello Whisper (es. large-v3-turbo quantizzato) | B4 | ~0,6–1,6 GB | MIT |
+| Vosk italiano small (riferimento leggero) | B4 | ~50 MB | da verificare |
+
+Totale stimato: **circa 2–3 GB**. Percorso proposto: una cartella su **D:** (per esempio `D:\QuickPilotM0\models`) da indicare all'utente. Nulla verrà installato nel sistema: i binari si estraggono nella cartella e si eseguono da lì.
 
 ## 8. Roadmap aggiornata
 

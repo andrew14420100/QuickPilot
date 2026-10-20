@@ -11,6 +11,7 @@ Regole comuni:
 | Prova | Script | Cosa fa |
 |---|---|---|
 | B1 | `Get-QuickPilotInventory.ps1` | Inventario di hardware, toolchain e permessi in sola lettura |
+| B3/B4 prep | `Test-QuickPilotMicrophone.ps1` | Elenca i microfoni, fa scegliere esplicitamente il dispositivo e misura parlato, rumore, SNR e saturazione (l'audio non viene salvato) |
 | B2 | `Test-QuickPilotTts.ps1` | Elenca le voci italiane OneCore, misura la sintesi, riproduce la frase e chiede se la voce è davvero italiana |
 | B5 | `Measure-QuickPilotLaunch.ps1` | Tempi di avvio (dispatch e finestra visibile) di notepad, Steam, Discord e Spotify |
 | B9 | `Measure-QuickPilotResources.ps1` | Campiona RAM, CPU, GPU e i processi indicati |
@@ -24,6 +25,9 @@ dotnet --list-runtimes
 
 # B2: voci TTS (riproduce audio dalle casse o dalle cuffie predefinite)
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Test-QuickPilotTts.ps1
+
+# Microfono: scegli esplicitamente il Katana V2X (non lo Steam Streaming Microphone)
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Test-QuickPilotMicrophone.ps1
 
 # B5: baseline con notepad (10 avvii, chiude solo le finestre che apre)
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\m0\Measure-QuickPilotLaunch.ps1 -Target notepad -Repetitions 10
