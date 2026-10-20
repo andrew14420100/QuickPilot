@@ -50,11 +50,18 @@ Correzione allo script: le sezioni della toolchain ora riportano `present`, `exi
 | Parakeet TDT 0.6B v3 int8 (sherpa-onnx 1.13.8) | **0,18** | 5/20 | 12/20 | **99 / 115 ms** | 1.074 ms |
 | Whisper large-v3-turbo q5_0 (whisper.cpp 1.8.3) | 0,298 | 4/20 | **20/20** | 14.800 / 15.156 ms | 467 ms |
 
-Lettura preliminare, da non considerare ancora una scelta definitiva:
+Per voce (confronto eseguito sul PC con `Compare-QuickPilotAsr.ps1`):
+- **Parakeet:** Cosimo WER 0,208 e prefisso 5/10; Elsa WER 0,151 e prefisso 7/10.
+- **Whisper:** WER 0,298 e prefisso 10/10 per entrambe le voci.
+
+**Raccomandazione attuale, condivisa con l'utente (non ancora una scelta definitiva):** Parakeet è il **candidato ASR predefinito** per il percorso interattivo, per il WER più basso e la latenza circa 149 volte inferiore. Whisper large-v3-turbo q5_0 su CPU, nella configurazione provata, non è adatto ai comandi interattivi. La parola di attivazione resta una questione separata (B3): il prefisso testuale su TTS non misura i falsi positivi.
+
+Lettura preliminare:
 - **Latenza.** Whisper, così configurato, impiega circa 150 volte più di Parakeet ed è fuori dal budget dei 2 s per i comandi interattivi. La causa attesa è l'encoder di Whisper, che elabora sempre una finestra di 30 s anche per frasi di 2 s: il tempo dell'encoder è nel JSON (`encodeMs`). La misura appare coerente con la configurazione, ma non è ancora ottimizzata.
 - **Accuratezza.** Parakeet ha un WER medio più basso. Whisper riconosce sempre il prefisso «quick pilot», ma sbaglia più parole nel resto della frase. Senza i testi trascritti non si può distinguere quanto pesino numeri, nomi propri o punteggiatura.
 - **Limiti.** Solo 20 frasi sintetiche e due voci OneCore. Nessun parlato reale, nessun rumore, nessuna voice chat o audio di gioco. Il controllo del prefisso non è un benchmark della parola di attivazione.
-- **Prossime misure proposte, senza nuovi download:**
+- **Prossimo passo indicato dall'utente:** un piccolo corpus di **parlato reale, solo opt-in**. Prima con frasi pronunciate volontariamente, poi con una sessione di ascolto per misurare i falsi trigger. L'audio grezzo non va conservato. Nessun nuovo modello da scaricare per ora.
+- **Misure Whisper facoltative, senza nuovi download:**
   - Whisper con `-Threads 8` e `-AudioContext` ridotto (per esempio 768 e 512), per verificare quanto scende la latenza e quanto peggiora il WER;
   - esame dei testi trascritti dei casi sbagliati, per entrambi i motori;
   - `Compare-QuickPilotAsr.ps1` per il confronto per voce.
@@ -175,7 +182,7 @@ Stato degli strumenti (vedi `tools/m0/README.md`), ordinati per priorità:
   - Gestiti con errori espliciti per campione: codice di uscita non zero, output senza tempi, trascrizione vuota, timestamp inattesi, timeout con chiusura del processo, file mancante, modello alterato, DLL VC++ mancanti.
   - Self-test 30/30, PSScriptAnalyzer pulito.
   - **Il binario Windows di whisper.cpp non è mai stato eseguito.** Download e benchmark in attesa del consenso esplicito dell'utente (§7.1) |
-| 6a | B4 confronto Whisper (CPU) | `Get-QuickPilotWhisperModels.ps1`, `Measure-QuickPilotWhisper.ps1`, `Compare-QuickPilotAsr.ps1` | ✅ **Eseguito sul PC** (Windows PowerShell 5.1, 4 thread, CPU, `-l it`, contesto audio predefinito; modello verificato). 20/20 campioni validi: WER medio 0,298, 4/20 esatte, «quick pilot» nel testo 20/20, trascrizione p50 14.800,1 ms e p95 15.155,9 ms, caricamento p50 466,8 ms. Confronto consolidato (`Compare-QuickPilotAsr.ps1`) ancora da eseguire |
+| 6a | B4 confronto Whisper (CPU) | `Get-QuickPilotWhisperModels.ps1`, `Measure-QuickPilotWhisper.ps1`, `Compare-QuickPilotAsr.ps1` | ✅ **Eseguito sul PC** (Windows PowerShell 5.1, 4 thread, CPU, `-l it`, contesto audio predefinito; modello verificato). 20/20 campioni validi: WER medio 0,298, 4/20 esatte, «quick pilot» nel testo 20/20, trascrizione p50 14.800,1 ms e p95 15.155,9 ms, caricamento p50 466,8 ms. Confronto consolidato eseguito sul PC con `Compare-QuickPilotAsr.ps1` |
 | 6b | B3 parola di attivazione | da preparare | ⏸ Dopo il confronto ASR |
 | 6c | T1–T4 voce di risposta JARVIS | da preparare | ⏸ Dopo il confronto ASR (`docs/M0_TTS_PLAN.md`) |
 | 7 | B6 impatto in gioco, B7 estensione Chrome, B8 packaging | da preparare | ⏸ Dopo B3/B4 |
