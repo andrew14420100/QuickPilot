@@ -15,6 +15,7 @@ Regole comuni:
 | B2 | `Test-QuickPilotTts.ps1` | Elenca le voci italiane OneCore, misura la sintesi, riproduce la frase e chiede se la voce è davvero italiana |
 | B5 | `Measure-QuickPilotLaunch.ps1` | Tempi di avvio (dispatch e finestra visibile) di notepad, Steam, Discord e Spotify |
 | B9 | `Measure-QuickPilotResources.ps1` | Campiona RAM, CPU, GPU e i processi indicati |
+| B4 passo 1 | `Get-QuickPilotM0Models.ps1` | Scarica **solo** sherpa-onnx CPU e Parakeet v3 int8 in `D:\QuickPilotM0\models`, verifica dimensione e SHA-256, estrae solo con `-Extract`, non esegue nulla. Provare prima con `-DryRun` |
 
 ## Ordine consigliato
 

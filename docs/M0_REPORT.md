@@ -147,7 +147,7 @@ Dati raccolti il 2026-10-20.
 
 | # | File | Fonte ufficiale | Dimensione | Dopo estrazione | Licenza pesi / binari | SHA-256 |
 |---|---|---|---|---|---|---|
-| 1 | `sherpa-onnx-v1.13.8-win-x64-shared-MT-Release-no-tts.tar.bz2` (runtime CPU, CRT statico, quindi nessun VC++ redistributable) | [release v1.13.8](https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.13.8) | 22,2 MB | da misurare (stima 50–80 MB) | Apache-2.0 (codice) | `4b0a94f7b5c606b1b64a19a831c2127559e4b3d34e195465ebc7be73d9ed4783` |
+| 1 | `sherpa-onnx-v1.13.8-win-x64-shared-MT-Release-no-tts.tar.bz2` (runtime CPU, CRT statico, quindi nessun VC++ redistributable) | [release v1.13.8](https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.13.8) | 23.271.851 B | 63.623.365 B (37 voci, una sola cartella radice; misurato) | Apache-2.0 (codice) | `4b0a94f7b5c606b1b64a19a831c2127559e4b3d34e195465ebc7be73d9ed4783` |
 | 2a | Parakeet TDT 0.6B v3 **int8**: `encoder.int8.onnx` | [HF csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8) | 652.184.281 B | nessuna estrazione | **CC-BY-4.0** (pesi NVIDIA, [model card](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)); il repo di conversione non dichiara una licenza propria | `acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247` |
 | 2b | `decoder.int8.onnx` | idem | 11.845.275 B | — | CC-BY-4.0 | `179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e` |
 | 2c | `joiner.int8.onnx` | idem | 6.355.277 B | — | CC-BY-4.0 | `3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3` |
@@ -169,6 +169,8 @@ Note:
 2. Elementi 4a + 4b (circa 578 MB): whisper.cpp CPU con large-v3-turbo q5_0, poi confronto in B4.
 3. Elemento 3: solo se la licenza viene chiarita o accettata; poi prova B3.
 4. Elemento 5 e/o elemento 6: opzionali, solo se le prove precedenti li giustificano.
+
+Il passo 1 è preparato in `tools/m0/Get-QuickPilotM0Models.ps1`: 693.750.623 B da scaricare, circa 61 MB dopo l'estrazione. Lo script è stato provato end-to-end in un ambiente cloud Linux, non sul PC: tutte le dimensioni e gli hash corrispondono. **Sul PC non è ancora stato eseguito.**
 
 Totale dei passi 1–2: circa 1,27 GB su D:. Ogni download verrà verificato su dimensione e SHA-256 prima dell'uso, e verrà scartato se non corrisponde.
 
